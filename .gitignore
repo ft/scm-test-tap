@@ -1,0 +1,11 @@
+.*
+!.gitignore
+*~
+*.orig
+*.go
+doc/*.3
+doc/*.html
+doc/*.texi
+doc/*.info
+tags
+TAGS
