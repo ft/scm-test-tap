@@ -66,6 +66,7 @@
   :use-module (ice-9 optargs)
   :use-module (ice-9 pretty-print)
   :use-module (ice-9 regex)
+  :use-module (srfi srfi-1)
   :export (pass-if-exception     pass-if-any-exception     pass-if-no-exception
            pass-if-=             pass-if-not-=
            pass-if-eq?           pass-if-not-eq?
@@ -83,7 +84,7 @@
            with-test-bundle
            tap/bail-out
            tap/comment
-           taptest/set-fs))
+           tap/set-option))
 
 ;; Internal variables
 
@@ -96,6 +97,69 @@
 (define *test-fs-prefix* "^[0-9]+-")
 (define *test-fs-root* (getcwd))
 (define *test-fs-file* (car (command-line)))
+
+(define-syntax tap:option
+  (lambda (x)
+    (syntax-case x ()
+      ((_ name variable predicate)
+       #'(list (quote name)
+               (lambda () variable)
+               (lambda (xx)
+                 (set! variable xx))
+               predicate
+               (quote predicate))))))
+
+(define options (list (tap:option fs-root *test-fs-root* string?)
+                      (tap:option fs-suffix *test-fs-suffix* string?)
+                      (tap:option fs-prefix *test-fs-prefix* string?)
+                      (tap:option fs-file *test-fs-file* string?)))
+
+(define (opt:get-entry key extr)
+  (let ((result (filter-map (lambda (x)
+                              (if (eq? (car x) key)
+                                  x #f))
+                            options)))
+    (if (null? result)
+        '()
+        (extr (car result)))))
+
+(define (opt:get-value key)
+  (let ((f (opt:get-entry key cadr)))
+    (if (and (list? f)
+             (null? f))
+        f
+        (f))))
+
+(define (opt:get-setter key)
+  (opt:get-entry key caddr))
+
+(define (opt:get-predicate key)
+  (opt:get-entry key cadddr))
+
+(define (opt:get-pred-name key)
+  (car (opt:get-entry key cddddr)))
+
+(define (tap/set-option key value)
+  (let ((s (opt:get-setter key))
+        (p (opt:get-predicate key)))
+    (cond ((not (null? s))
+           (if (p value)
+               (begin
+                 (s value)
+                 value)
+               (begin
+                 (format #t "Invalid value for `~a' (~s). " key value)
+                 (format #t "Needs to satisfy `~a'.~%" (opt:get-pred-name key))
+                 '())))
+          (else
+           (format #t "Invalid option: `~a'~%" key)
+           (format #t "  valid options:~%")
+           (let next ((o options))
+             (cond
+              ((null? o) '())
+              (else
+               (format #t "    ~a~%" (caar o))
+               (next (cdr o)))))))))
 
 ;; Plan handling
 
@@ -224,24 +288,7 @@
 ;;    file: "/usr/src/thing/tests/foo/bar/0001-baz-scm.t"
 ;;
 ;; Resulting hierarchy: (foo bar baz)
-
-;; `taptest/set-fs' allows the user to alter the parameters of the filesystem
-;; structure to test hierarchy mapping. Namely: `root', `file', suffix' and
-;; `prefix'.
-(define (taptest/set-fs key value)
-  (cond ((eq? key 'root)
-         (set! *test-fs-root* value))
-        ((eq? key 'file)
-         (set! *test-fs-file* value))
-        ((eq? key 'suffix)
-         (set! *test-fs-suffix* value))
-        ((eq? key 'prefix)
-         (set! *test-fs-prefix* value))
-        (else
-         (format #t "taptest/set-fs: Invalid key: '~a~%" key)
-         (format #t "  Valid keys: 'root, 'suffix, 'prefix.~%")
-         (quit 1))))
-
+;;
 ;; `deduce-hierarchy' maps a file-name to a hierarchy as described above. All
 ;; this hierarchy is an absolutely cosmetic feature, for human beings to tell
 ;; what a set of test-cases is about. Even if you don't set this feature up
