@@ -93,6 +93,7 @@
 (define *test-case-todo* #f)
 (define *test-description* #f)
 (define *test-hierarchy* '())
+(define *test-pp-width* 60)
 (define *test-fs-suffix* ".t$")
 (define *test-fs-prefix* "^[0-9]+-")
 (define *test-fs-root* (getcwd))
@@ -112,7 +113,9 @@
 (define options (list (tap:option fs-root *test-fs-root* string?)
                       (tap:option fs-suffix *test-fs-suffix* string?)
                       (tap:option fs-prefix *test-fs-prefix* string?)
-                      (tap:option fs-file *test-fs-file* string?)))
+                      (tap:option fs-file *test-fs-file* string?)
+                      (tap:option tap-pretty-print-width *test-pp-width*
+                                  integer?)))
 
 (define (opt:get-entry key extr)
   (let ((result (filter-map (lambda (x)
@@ -193,7 +196,7 @@
   (format #t "#   column: ~d~%" (assq-ref loc 'column))
   (format #t "#~%# expression:~%")
   (pretty-print expression
-                #:width 60
+                #:width *test-pp-width*
                 #:display? #f
                 #:per-line-prefix "#     ")
   (format #t "#~%# evaluated form:~%#     (~a" test)
