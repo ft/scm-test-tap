@@ -94,6 +94,7 @@
 (define *test-description* #f)
 (define *test-hierarchy* '())
 (define *test-pp-width* 60)
+(define *test-force-tap-header* #f)
 (define *test-fs-suffix* ".t$")
 (define *test-fs-prefix* "^[0-9]+-")
 (define *test-fs-root* (getcwd))
@@ -114,6 +115,8 @@
                       (tap:option fs-suffix *test-fs-suffix* string?)
                       (tap:option fs-prefix *test-fs-prefix* string?)
                       (tap:option fs-file *test-fs-file* string?)
+                      (tap:option tap-force-header *test-force-tap-header*
+                                  boolean?)
                       (tap:option tap-pretty-print-width *test-pp-width*
                                   integer?)))
 
@@ -432,7 +435,8 @@
 ;; Every test bundle with TAP version >= 13, prints a header announcing the
 ;; version of the implemented TAP protocol.
 (define (tap/header)
-  (if (>= *sts/tap/version* 13)
+  (if (or *test-force-tap-header*
+          (>= *sts/tap/version* 13))
       (format #t "TAP version ~d~%" *sts/tap/version*)))
 
 ;; Every test bundle should announce how many tests it is going to run (if it
