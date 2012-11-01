@@ -7,5 +7,6 @@ doc/*.3
 doc/*.html
 doc/*.texi
 doc/*.info
+doc/*.pdf
 tags
 TAGS
