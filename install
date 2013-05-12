@@ -1,0 +1,26 @@
+#!/bin/sh
+
+SITE_DIR=$(guile -c '(format #t "~a" (%site-dir))')
+SITE_COMPILED_DIR=$(guile -c '(format #t "~a" (%site-ccache-dir))')
+
+if [ ! -d "$SITE_DIR" ]; then
+    printf 'Creating site dir: `%s'\''\n' "$SITE_DIR"
+    install -m0755 -d "$SITE_DIR" || exit 1
+fi
+
+if [ -e scm/taptest.go ] && [ ! -d "$SITE_COMPILED_DIR" ]; then
+    printf 'Creating compiled site dir: `%s'\''\n' "$SITE_COMPILED_DIR"
+    install -m0755 -d "$SITE_COMPILED_DIR" || exit 1
+fi
+
+printf 'Installing scheme source to site dir\n'
+(set -x
+ install -m0644 scm/taptest.scm "$SITE_DIR";) || exit 1
+
+if [ -e scm/taptest.go ]; then
+    printf 'Installing scheme source to site dir\n'
+    (set -x
+     install -m0644 scm/taptest.go "$SITE_COMPILED_DIR";) || exit 1
+fi
+
+exit 0
