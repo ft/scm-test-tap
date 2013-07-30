@@ -1,7 +1,7 @@
 ;; Load this file into emacs for proper indentation of the project's macros
 ;; within emacs' `scheme-mode'.
 ;;
-;; This file is part of `scmtap'.
+;; This file is part of `scm-test-tap'.
 
 (mapc (lambda (thing)
         (put (car thing)

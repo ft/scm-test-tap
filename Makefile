@@ -4,7 +4,7 @@ all:
 	@printf 'Use either "make doc" or "make test".\n'
 
 compile:
-	(cd scm && guild compile -o taptest.go taptest.scm;)
+	(cd scheme/test && guild compile -o tap.go tap.scm;)
 
 doc:
 	@(cd doc && $(MAKE) all;)

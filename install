@@ -1,26 +1,41 @@
 #!/bin/sh
 
-SITE_DIR=$(guile -c '(format #t "~a" (%site-dir))')
-SITE_COMPILED_DIR=$(guile -c '(format #t "~a" (%site-ccache-dir))')
+GUILE_BINARY=${GUILE_BINARY:-guile}
+
+SITE_DIR=$("$GUILE_BINARY" -c '(format #t "~a" (%site-dir))')
+if [ x"$SITE_DIR" = x ]; then
+    printf 'Failed to find site dir!\n'
+    exit 1
+fi
+SITE_DIR="${SITE_DIR}/test"
+
+if [ -e scheme/test/tap.go ]; then
+    SITE_COMPILED_DIR=$("$GUILE_BINARY" -c '(format #t "~a" (%site-ccache-dir))')
+    if [ x"$SITE_COMPILED_DIR" = x ]; then
+        printf 'Failed to find compiled dir!\n'
+        exit 1
+    fi
+    SITE_COMPILED_DIR="${SITE_COMPILED_DIR}/test"
+fi
 
 if [ ! -d "$SITE_DIR" ]; then
     printf 'Creating site dir: `%s'\''\n' "$SITE_DIR"
     install -m0755 -d "$SITE_DIR" || exit 1
 fi
 
-if [ -e scm/taptest.go ] && [ ! -d "$SITE_COMPILED_DIR" ]; then
+if [ -e scheme/test/tap.go ] && [ ! -d "$SITE_COMPILED_DIR" ]; then
     printf 'Creating compiled site dir: `%s'\''\n' "$SITE_COMPILED_DIR"
     install -m0755 -d "$SITE_COMPILED_DIR" || exit 1
 fi
 
 printf 'Installing scheme source to site dir\n'
 (set -x
- install -m0644 scm/taptest.scm "$SITE_DIR";) || exit 1
+ install -m0644 scheme/test/tap.scm "$SITE_DIR";) || exit 1
 
-if [ -e scm/taptest.go ]; then
+if [ -e scheme/test/tap.go ]; then
     printf 'Installing scheme source to site dir\n'
     (set -x
-     install -m0644 scm/taptest.go "$SITE_COMPILED_DIR";) || exit 1
+     install -m0644 scheme/test/tap.go "$SITE_COMPILED_DIR";) || exit 1
 fi
 
 exit 0

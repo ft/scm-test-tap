@@ -46,7 +46,7 @@
 ;;
 ;; A valid test script may look like this:
 ;;
-;; (use-modules (taptest))
+;; (use-modules (test tap))
 ;;
 ;; (with-test-bundle (foo bar)
 ;;   (plan 1)
@@ -61,7 +61,7 @@
 ;;   since the current Perl Test::More module doesn't even do that itself, this
 ;;   code won't bother.
 
-(define-module (taptest)
+(define-module (test tap)
   :use-module (ice-9 format)
   :use-module (ice-9 optargs)
   :use-module (ice-9 pretty-print)

@@ -1,11 +1,11 @@
 # NAME
 
-scmtap - TAP emitting test framework for scheme
+(test tap) - TAP emitting test framework for scheme
 
 
 # SYNOPSIS
 
-(use-modules (scmtap))
+(use-modules (test tap))
 
 (*with-test-bundle* "test bundle name" **...**)
 
@@ -26,9 +26,9 @@ scmtap - TAP emitting test framework for scheme
 
 # DESCRIPTION
 
-*scmtap* is a framework for writing test suites in Scheme, that emit output
-compliant with the TAP protocol. It features a fairly rich API for conveniently
-writing large, yet maintainable test suites.
+*scm-test-tap* is a framework for writing test suites in Scheme, that emit
+output compliant with the TAP protocol. It features a fairly rich API for
+conveniently writing large, yet maintainable test suites.
 
 Currently, the code makes use of a number of non-standard features from GNU
 Guile. No other scheme implementation is actively supported at this point.
