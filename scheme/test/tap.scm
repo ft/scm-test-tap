@@ -425,6 +425,14 @@
 (define-tap-test (pass-if-true x) x)
 (define-tap-test (pass-if-false x) (not x))
 
+;; Utility functions and macros
+
+(define-syntax make-labeled-values
+  (lambda (x)
+    (syntax-case x ()
+      ((_ symbol ...)
+       #'(list (cons (quote symbol) symbol) ...)))))
+
 ;; --- TAP writers ---
 ;;
 ;; See <http://testanything.org> for details. This code tries to implement the
