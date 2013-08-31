@@ -433,6 +433,15 @@
       ((_ symbol ...)
        #'(list (cons (quote symbol) symbol) ...)))))
 
+(define-syntax force-import
+  (lambda (x)
+    (syntax-case x ()
+      ((_ module symbol)
+       #'(define symbol (@@ module symbol)))
+      ((_ module symbol0 symbol1 ...)
+       #'(begin (force-import module symbol0)
+                (force-import module symbol1 ...))))))
+
 ;; --- TAP writers ---
 ;;
 ;; See <http://testanything.org> for details. This code tries to implement the
