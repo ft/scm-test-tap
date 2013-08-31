@@ -82,6 +82,8 @@
            define-test
            with-fs-test-bundle
            with-test-bundle
+           force-import
+           make-labeled-values
            tap/bail-out
            tap/comment
            tap/set-option))
