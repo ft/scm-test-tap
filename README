@@ -1,0 +1,5 @@
+This is a test-framework that emits TAP compliant output.
+
+The code uses some extensions of the GNU Guile implementation of scheme and
+will therefore not work with other implementations, unless there is
+a compatibility layer in place.
