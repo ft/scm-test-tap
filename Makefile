@@ -1,5 +1,8 @@
 SH = /bin/sh
 
+TESTGUILE = ./run-single-test
+PROVE = prove --merge --verbose --color -e '$(TESTGUILE)'
+
 all:
 	@printf 'Use either "make doc" or "make test".\n'
 
@@ -10,7 +13,7 @@ doc:
 	@(cd doc && $(MAKE) all;)
 
 test:
-	@(cd test && $(MAKE) all;)
+	$(PROVE) test/*.scm
 
 install:
 	@$(SH) ./install
