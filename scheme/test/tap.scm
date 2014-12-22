@@ -474,8 +474,8 @@
 (define (tap/result num description todo result)
   (format #t "~a ~d - ~a~a~%" (if result "ok" "not ok")
                               num
-                              (if todo "TODO " "")
-                              description))
+                              description
+                              (if todo " # TODO" "")))
 
 ;; Tests can also be skipped.
 (define (tap/skip num description)
