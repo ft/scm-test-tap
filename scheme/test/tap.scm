@@ -479,7 +479,7 @@
 
 ;; Tests can also be skipped.
 (define (tap/skip num description)
-  (format #t "ok ~d - SKIP ~a~%" num description))
+  (format #t "ok ~d - ~a # SKIP~%" num description))
 
 ;; You can also spit out arbitrary other data, which the harness will ignore.
 (define (tap/comment data)
