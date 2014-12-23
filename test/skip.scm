@@ -4,7 +4,7 @@
 
 (use-modules (test tap))
 
-(with-test-bundle (test tap skip)
+(with-test-bundle (test tap skip individual)
   (plan 3)
   (define-test skip "This test will be skipped"
     (pass-if-true (format #t "not ok 0 - This should not be printed.~%")))
