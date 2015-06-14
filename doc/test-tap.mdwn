@@ -41,17 +41,62 @@ TODO
 
 # ANATOMY OF A TEST SCRIPT
 
-TODO
+Test scripts contain bundles of actual tests. Such bundles are defined by
+‘*with-test-bundle*’:
+
+~~~~~~~{.scheme}
+(with-test-bundle (hierarchy symbols here)
+  ...)
+~~~~~~~
+
+A bundle has a planned number of tests, that it contains. This is articulated
+by the ‘*plan*’ procedure (if there is no plan yet, the ‘*no-plan*’ procedure
+can be used instead):
+
+~~~~~~~{.scheme}
+(with-test-bundle (hierarchy symbols here)
+  (plan 12)   ; optionally: (no-plan)
+  ...)
+~~~~~~~
+
+The actual tests are defined by calls to ‘*define-test*’, that connects a test
+expression to a test title. The test expression is one variant of a
+‘*pass-if-*\*’ macro, that takes care of all the book-keeping involved with the
+processing of the test suite itself. Thus a very simple script could look like
+the following snippet (the *(test tap)* module imports the framework's code):
+
+~~~~~~~{.scheme}
+(use-modules (test tap))
+
+(with-test-bundle (math simple)
+  (plan 1)
+  (define-test "Basic integer addition works"
+    (pass-if-= (+ 1 2) 3)))
+~~~~~~~
+
+This is the basic structure of test-scripts. The framework contains some helper
+functionality to deal with common situations found in the real world. The
+EXAMPLE section shows the use of some of those. The ‘*test/*’ subdirectory of
+the project's source code directory contains a number of tests that make sure
+the framework behaves as expected. Those scripts may be used for instructional
+purposes as well.
 
 
-# TEST PROPERTIES
+# TEST DIRECTIVES
 
-TODO
+Test directives add additional information to tests. Currently, they can be
+used to skip tests or mark them as `TODO`, which means that the test should be
+run but be expected to likely fail, possibly because the part of the software
+that is being tested is not finished yet.
 
 
 ## Skipping Tests
 
-TODO
+Some tests may be known to fail. Such tests can be skipped entirely by telling
+the framework to do so. There are two ways to skip tests: *Static* skips will
+skip the tests in question without question. *Dynamic* skips allow the user to
+supply a predicate, that when evaluated determines whether the tests it covers
+should be skipped or not.
 
 
 ### Static Skips
@@ -71,55 +116,184 @@ TODO
 
 # TEST CASE MACROS
 
-TODO
+The macros discussed in this section need to be used to perform the actual
+testing with test-suites using this framework, since they take care of all the
+required book-keeping as well as generating the desired TAP output.
+
+The most generic of all these macros is ‘*pass-if-true*’ and all other macros
+could indeed be implemented in terms of it. For example:
+
+~~~~~~~{.scheme}
+;; Here's an example we've already seen:
+(define-test "Basic integer addition works"
+  (pass-if-= (+ 1 2) 3))
+
+;; And this is really the same test:
+(define-test "Basic integer addition works"
+  (pass-if-true (= (+ 1 2) 3)))
+~~~~~~~
+
+The additional macros are provided to increase brevity and clarity.
 
 
 ## Generic Tests
 
-* *pass-if-true*
-* *pass-if-false*
+These are the most basic of test macros, that can be used to check for complex
+properties, that the more specialised macros cannot. These macros take exactly
+one argument, that is tested for the value indicated by the macro's name.
+
+* `(pass-if-true EXPRESSION)`
+* `(pass-if-false EXPRESSION)`
 
 
 ## Equality Tests
 
-* *pass-if-=*
-* *pass-if-not-=*
-* *pass-if-eq?*
-* *pass-if-not-eq?*
-* *pass-if-eqv?*
-* *pass-if-not-eqv?*
-* *pass-if-equal?*
-* *pass-if-not-equal?*
+The macros listed in this section provide specialised tests for Scheme's
+generic equality predicates (*eq?*, *eqv?* and *equal?*). Each predicate has a
+positive and an inverted logic macro version. Each of these macros take exactly
+two arguments upon which the test indicated by the macro's name is performed.
+
+* `(pass-if-eq? EXPRESSION EXPRESSION)`
+* `(pass-if-not-eq? EXPRESSION EXPRESSION)`
+* `(pass-if-eqv? EXPRESSION EXPRESSION)`
+* `(pass-if-not-eqv? EXPRESSION EXPRESSION)`
+* `(pass-if-equal? EXPRESSION EXPRESSION)`
+* `(pass-if-not-equal? EXPRESSION EXPRESSION)`
 
 
-## String Tests
+## Value specific tests
 
-* *pass-if-string=?*
-* *pass-if-not-string=?*
-* *pass-if-string-ci=?*
-* *pass-if-not-string-ci=?*
+The macros listed in this section provide specialised tests for some of
+Scheme's value types (namely strings and numeric values). Each predicate has a
+positive and an inverted logic macro version. Each of these macros take exactly
+two arguments upon which the test indicated by the macro's name is performed.
+
+These macros test for equality of numeric values:
+
+* `(pass-if-= NUMBER NUMBER)`
+* `(pass-if-not-= NUMBER NUMBER)`
+
+These perform a test for absolute equality of two given strings:
+
+* `(pass-if-string=? STRING STRING)`
+* `(pass-if-not-string=? STRING STRING)`
+
+The following two macros perform a test for case-insensitive equality of two
+given strings:
+
+* `(pass-if-string-ci=? STRING STRING)`
+* `(pass-if-not-string-ci=? STRING STRING)`
+
+Finally, these macros perform the test of matching a string to a regular
+expression. They assume the first argument to be a string containing the
+regular expression to be matched against the string in the second argument.
+
+* `(pass-if-re-match PATTERN STRING)`
+* `(pass-if-not-re-match PATTERN STRING)`
 
 
 ## Exception Handling Tests
 
-* *pass-if-exception*
-* *pass-if-any-exception*
-* *pass-if-no-exception*
+The set of macros listed in this section can be used test if a given expression
+causes an exception to be thrown or not. The first two macros listed expect
+exactly one argument: The expression to be evaluated. The third macro expects
+two arguments: First the type of exception that is expected to be thrown and
+second the expression to be evaluated.
+
+* `(pass-if-any-exception EXPRESSION)`
+* `(pass-if-no-exception EXPRESSION)`
+* `(pass-if-exception SYMBOL EXPRESSION)`
 
 
-# EXAMPLES
+# Utilities
+
+# Other API
+
+## The Plan
+
+With TAP the output of a test script announces the number of tests that are
+expected to run. This serves as a safeguard against test scripts that may die
+unexpectedly. Since the number of tests a script runs is usually deterministic,
+this requirement can be easily fulfilled. With scripts that run a
+non-deterministic number of tests, it is possible to to produce a plan-like
+line as the last line of a scripts output that shows the number of tests that
+were run.
+
+
+### Deterministic plans
+
+The ‘*plan*’ procedure produces a plan line. It requires one integer value as
+its sole argument and produces TAP compliant output.
+
+* `(plan INTEGER)`
+
+This should be among the first steps in every test bundle (usually it is indeed
+the first action taken), before any tests are performed.
+
+
+### Non-deterministic plans
+
+In case the number of tests in a script is not known, the ‘*no-plan*’ procedure
+may be called. It takes no arguments and causes a bundle to produce a plan-like
+line at the end of its output. This procedure should be called in the same
+place the ‘*plan*’ procedure would normally be used.
+
+* `(no-plan)`
+
+
+## Bundles
+
+Bundles may be used to group a number of tests into a logical group. The
+*with-test-bundle* macro introduces such bundles.
+
+* `(with-test-bundle HIERARCHY expression(s) ...)`
+
+It is possible to have more than one bundle per file, however the default
+‘*prove*’ TAP harness from the Perl programming language expects only one plan
+per test script, which mean that it cannot be used without modification if you
+plan to use multiple bundles in a script.
+
+The framework provides a wrapper for ‘*with-test-bundle*’ that deduces the
+hierarchy argument by looking that the test-scripts name in the file system.
+
+* `(with-fs-test-bundle expression(s) ...)`
+
+See the “Configuration” section below for details about how to control how the
+file name of the test-script is turned into a hierarchy list.
+
+
+## Configuration
 
 TODO
 
 
+# EXAMPLES
+
+## Test complex properties with generic macros
+
+~~~~~~~{.scheme}
+(define-test "The *foo* variable has valid type"
+  (pass-if-true (or (boolean? *foo*)
+                    (integer? *foo*))))
+~~~~~~~
+
+## Perform a regular expression test
+
+~~~~~~~{.scheme}
+(define-test "test: re-match"
+  (pass-if-re-match "^Does.*match" "Does this match?"))
+~~~~~~~
+
+
 # SEE ALSO
 
-*TAP::Parser(3)*
+*TAP::Parser(3)*, *prove(1)*
 
 
 # COPYRIGHT
 
-Copyright (c) 2012 Frank Terbeck <ft@bewatermyfriend.org>, All rights reserved.
+Copyright (c) 2012-2014 Frank Terbeck <ft@bewatermyfriend.org>, All rights
+reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
