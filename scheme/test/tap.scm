@@ -69,6 +69,7 @@
   :use-module (srfi srfi-1)
   :export (pass-if-exception     pass-if-any-exception     pass-if-no-exception
            pass-if-=             pass-if-not-=
+           pass-if-~=            pass-if-not-~=
            pass-if-eq?           pass-if-not-eq?
            pass-if-eqv?          pass-if-not-eqv?
            pass-if-equal?        pass-if-not-equal?
@@ -384,6 +385,11 @@
 
 (define-tap-test (pass-if-= a b) (= a b))
 (define-tap-test (pass-if-not-= a b) (not (= a b)))
+
+(define-tap-test (pass-if-~= a b eps) (and (< a (+ b eps))
+                                           (> a (- b eps))))
+(define-tap-test (pass-if-not-~= a b eps) (not (and (< a (+ b eps))
+                                                    (> a (- b eps)))))
 
 (define-tap-test (pass-if-eq? a b) (eq? a b))
 (define-tap-test (pass-if-not-eq? a b) (not (eq? a b)))
