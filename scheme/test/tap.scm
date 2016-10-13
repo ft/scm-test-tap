@@ -62,32 +62,34 @@
 ;;   code won't bother.
 
 (define-module (test tap)
-  :use-module (ice-9 format)
-  :use-module (ice-9 optargs)
-  :use-module (ice-9 pretty-print)
-  :use-module (ice-9 regex)
-  :use-module (srfi srfi-1)
-  :export (pass-if-exception     pass-if-any-exception     pass-if-no-exception
-           pass-if-=             pass-if-not-=
-           pass-if-~=            pass-if-not-~=
-           pass-if-eq?           pass-if-not-eq?
-           pass-if-eqv?          pass-if-not-eqv?
-           pass-if-equal?        pass-if-not-equal?
-           pass-if-string=?      pass-if-not-string=?
-           pass-if-string-ci=?   pass-if-not-string-ci=?
-           pass-if-re-match      pass-if-not-re-match
-           pass-if-true          pass-if-false
-           plan                  no-plan
-           require
-           todo
-           define-test
-           with-fs-test-bundle
-           with-test-bundle
-           force-import
-           make-labeled-values
-           tap/bail-out
-           tap/comment
-           tap/set-option))
+  #:use-module (ice-9 format)
+  #:use-module (ice-9 optargs)
+  #:use-module (ice-9 pretty-print)
+  #:use-module (ice-9 regex)
+  #:use-module (srfi srfi-1)
+  #:export (pass-if-exception
+            pass-if-any-exception
+            pass-if-no-exception
+            pass-if-=             pass-if-not-=
+            pass-if-~=            pass-if-not-~=
+            pass-if-eq?           pass-if-not-eq?
+            pass-if-eqv?          pass-if-not-eqv?
+            pass-if-equal?        pass-if-not-equal?
+            pass-if-string=?      pass-if-not-string=?
+            pass-if-string-ci=?   pass-if-not-string-ci=?
+            pass-if-re-match      pass-if-not-re-match
+            pass-if-true          pass-if-false
+            plan                  no-plan
+            require
+            todo
+            define-test
+            with-fs-test-bundle
+            with-test-bundle
+            force-import
+            make-labeled-values
+            tap/bail-out
+            tap/comment
+            tap/set-option))
 
 ;; Internal variables
 
