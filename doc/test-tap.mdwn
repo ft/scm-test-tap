@@ -173,6 +173,12 @@ These macros test for equality of numeric values:
 * `(pass-if-= NUMBER NUMBER)`
 * `(pass-if-not-= NUMBER NUMBER)`
 
+* `(pass-if-~= NUMBER NUMBER EPS)`
+* `(pass-if-not-~= NUMBER NUMBER EPS)`
+
+The latter two incantations implement approximate equality testing, by allowing
+the user to provide a measure of the approximation via the *EPS* parameter.
+
 These perform a test for absolute equality of two given strings:
 
 * `(pass-if-string=? STRING STRING)`
