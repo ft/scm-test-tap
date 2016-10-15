@@ -62,6 +62,7 @@
 
 (define-module (test tap)
   #:use-module (ice-9 format)
+  #:use-module (ice-9 match)
   #:use-module (ice-9 optargs)
   #:use-module (ice-9 pretty-print)
   #:use-module (ice-9 regex)
@@ -93,6 +94,7 @@
 ;; Internal variables
 
 (define *plan* #f)
+(define *todo-prints-diag* #f)
 (define *test-case-count* 0)
 (define *test-case-todo* #f)
 (define *test-description* #f)
@@ -119,6 +121,8 @@
                       (tap:option fs-suffix *test-fs-suffix* string?)
                       (tap:option fs-prefix *test-fs-prefix* string?)
                       (tap:option fs-file *test-fs-file* string?)
+                      (tap:option tap-todo-prints-diagnose
+                                  *todo-prints-diag* boolean?)
                       (tap:option tap-force-header *test-force-tap-header*
                                   boolean?)
                       (tap:option tap-pretty-print-width *test-pp-width*
@@ -194,28 +198,67 @@
   (set! *test-case-count* (+ *test-case-count* 1))
   (set! *test-description* name))
 
+(define (print-location loc)
+  (tap/comment (format #f "    file: ~s" (assq-ref loc 'filename)))
+  (tap/comment (format #f "    line: ~d" (assq-ref loc 'line)))
+  (tap/comment (format #f "  column: ~d" (assq-ref loc 'column))))
+
+(define (pp-expression expression)
+  (pretty-print expression
+                #:width *test-pp-width*
+                #:display? #f
+                #:per-line-prefix "#     "))
+
 ;; `error-diag' provides detailed diagnostic output for failed tests.
 (define (error-diag test loc expression data)
   (format #t "#~%# failed test: ~s~%" *test-description*)
   (format #t "#~%# location:~%")
-  (format #t "#     file: ~s~%" (assq-ref loc 'filename))
-  (format #t "#     line: ~d~%" (assq-ref loc 'line))
-  (format #t "#   column: ~d~%" (assq-ref loc 'column))
+  (print-location loc)
   (format #t "#~%# expression:~%")
-  (pretty-print expression
-                #:width *test-pp-width*
-                #:display? #f
-                #:per-line-prefix "#     ")
+  (pp-expression expression)
   (format #t "#~%# evaluated form:~%#     (~a" test)
   (let next ((d data))
     (cond ((null? d) #t)
           (else
            (let ((i (car d)))
-             (if (string? i)
-                 (format #t " ~s" i)
-                 (format #t " ~a" i))
-             (next (cdr d))))))
-  (format #t ")~%#~%"))
+             (cond ((eq? i 'close) (format #t ")~%#~%"))
+                   ((string? i) (format #t " ~s" i))
+                   ((thunk? i) (i))
+                   (else (format #t " ~a" i)))
+             (next (cdr d)))))))
+
+;; `deal-with-exception' diagnoses caught exceptions.
+(define* (deal-with-exception loc exp name argument #:key (skip-expr? #f))
+
+  (define format-error-msgs '(unbound-variable
+                              wrong-number-of-args
+                              wrong-type-arg))
+
+  (define (else-handler args)
+    (tap/comment "argument:")
+    (tap/comment (format #f "    ~s" argument)))
+
+  (when loc
+    (tap/comment "")
+    (print-location loc))
+  (unless skip-expr?
+    (tap/comment "")
+    (tap/comment "expression:")
+    (pp-expression exp))
+  (tap/comment "")
+  (tap/comment "exception:")
+  (tap/comment (format #f "    ~s" name))
+  (tap/comment "")
+  (cond ((member name format-error-msgs)
+         (match argument
+           ((#f fmt (arg) #f)
+            (tap/comment (format #f fmt arg)))
+           ((proc fmt (args _ ...) ...)
+            (tap/comment (format #f "In procedure ~a: " proc))
+            (tap/comment (string-append "    " (apply format #f fmt args))))
+           (else (else-handler argument))))
+        ((null? argument) (tap/comment "Empty exception argument."))
+        (else (else-handler argument))))
 
 ;; `require' is used to dynamically determine whether a dependency of a
 ;; test-case or even a test-bundle is satisfied and either skip the test or the
@@ -348,6 +391,12 @@
         ((_ code ...)
          #'(with-test-bundle (hierarchy ...) code ...))))))
 
+(define (caught-title expected?)
+  (let ((common "aught exception while evaluating test expression!"))
+    (if expected?
+        (tap/comment (string-append "C" common))
+        (tap/comment (string-append "Unexpectedly c" common)))))
+
 ;; `define-tap-test' is a macro that generates the `pass-if-*' macros. So all
 ;; those macros will behave exactly the same. The `pass-if-*' code needs to be
 ;; made up of macros, so the input expressions are available to the diagnostic
@@ -360,27 +409,36 @@
            (lambda (x)
              (syntax-case x ()
                ((_ a0 a1 ...)
-                #'(let ((result exp))
+                #'(let ((result (catch #t
+                                  (lambda () exp)
+                                  (lambda (a . k)
+                                    (caught-title #f)
+                                    (deal-with-exception (current-source-location)
+                                                         (quote exp) a k)
+                                    (tap/comment "")
+                                    (tap/comment "The following test will therefore fail!")
+                                    #f))))
                     (tap/result *test-case-count*
                                 *test-description*
                                 *test-case-todo*
                                 result)
-                    (if (and (not *test-case-todo*)
+                    (if (and (or *todo-prints-diag*
+                                 (not *test-case-todo*))
                              (not result))
                         (error-diag (quote name)
                                     (current-source-location)
                                     (quote exp)
-                                    ;; The pass-if-*exception macros will
-                                    ;; likely throw an exception so we need to
-                                    ;; play catch here.
                                     (catch #t
                                       (lambda ()
                                         (list a0 a1 ...))
                                       (lambda (a . k)
                                         (list
-                                         (format #f
-                                                 "Caught exception: '~a"
-                                                 a)))))))))))))))
+                                         (format #f "Caught exception: ~a" a)
+                                         'close
+                                         (lambda ()
+                                           (caught-title #t)
+                                           (deal-with-exception #f (quote exp) a k
+                                                                #:skip-expr? #t))))))))))))))))
 
 ;; pass-if-*
 
