@@ -15,10 +15,13 @@ doc:
 test:
 	$(PROVE) test/*.scm
 
+failures:
+	$(PROVE) examples/*.scm || true
+
 install:
 	@$(SH) ./install
 
 clean:
 	@(cd doc && $(MAKE) clean;)
 
-.PHONY: all clean doc install test
+.PHONY: all clean doc failures install test
