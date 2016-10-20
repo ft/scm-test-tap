@@ -221,7 +221,8 @@
                 (if (null? rest)
                     (reverse acc)
                     (loop (cdr rest) (cons (cdar rest) acc))))))
-    (pp-expression form)))
+    (pp-expression form))
+  (format #t "#~%"))
 
 ;; `deal-with-exception' diagnoses caught exceptions.
 (define* (deal-with-exception loc exp name argument #:key (skip-expr? #f))
