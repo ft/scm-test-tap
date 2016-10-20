@@ -482,7 +482,7 @@
                                           (current-source-location)
                                           'exp
                                           (list result :::)))
-                            final))))
+                            (not (not final))))))
                    ((name e :::)
                     #'(begin
                         (tap/result *test-case-count*
@@ -492,7 +492,8 @@
                         (handle-wrong-number-of-arguments
                          'name
                          (current-source-location)
-                         (list 'input-a ...) (list 'e :::)))))))))))))
+                         (list 'input-a ...) (list 'e :::))
+                        #f)))))))))))
 
 ;; pass-if-*
 
