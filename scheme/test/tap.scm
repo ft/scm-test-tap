@@ -210,18 +210,19 @@
                 #:per-line-prefix "#     "))
 
 ;; `error-diag' provides detailed diagnostic output for failed tests.
-(define (error-diag test loc expression data)
+(define* (error-diag test loc expression data #:key (show-evaluated? #t))
   (format #t "#~%# failed test: ~s~%" *test-description*)
   (format #t "#~%# location:~%")
   (print-location loc)
   (format #t "#~%# expression:~%")
   (pp-expression expression)
-  (format #t "#~%# evaluated form:~%")
-  (let ((form (let loop ((rest data) (acc (list test)))
-                (if (null? rest)
-                    (reverse acc)
-                    (loop (cdr rest) (cons (cdar rest) acc))))))
-    (pp-expression form))
+  (when show-evaluated?
+    (format #t "#~%# evaluated form:~%")
+    (let ((form (let loop ((rest data) (acc (list test)))
+                  (if (null? rest)
+                      (reverse acc)
+                      (loop (cdr rest) (cons (cdar rest) acc))))))
+      (pp-expression form)))
   (format #t "#~%"))
 
 (define (handle-wrong-number-of-arguments name loc input-a input)
@@ -247,7 +248,8 @@
 
   (define (else-handler args)
     (tap/comment "argument:")
-    (tap/comment (format #f "    ~s" argument)))
+    (tap/comment (format #f "    ~s" argument))
+    (tap/comment ""))
 
   (when loc
     (tap/comment "")
@@ -255,20 +257,24 @@
   (unless skip-expr?
     (tap/comment "")
     (tap/comment "expression:")
-    (pp-expression exp))
-  (tap/comment "")
+    (pp-expression exp)
+    (tap/comment ""))
   (tap/comment "exception:")
   (tap/comment (format #f "    ~s" name))
   (tap/comment "")
   (cond ((member name format-error-msgs)
          (match argument
            ((#f fmt (arg) #f)
-            (tap/comment (format #f fmt arg)))
+            (tap/comment (format #f fmt arg))
+            (tap/comment ""))
            ((proc fmt (args _ ...) ...)
             (tap/comment (format #f "In procedure ~a: " proc))
-            (tap/comment (string-append "    " (apply format #f fmt args))))
+            (tap/comment (string-append "    " (apply format #f fmt args)))
+            (tap/comment ""))
            (else (else-handler argument))))
-        ((null? argument) (tap/comment "Empty exception argument."))
+        ((null? argument)
+         (tap/comment "Empty exception argument.")
+         (tap/comment ""))
         (else (else-handler argument))))
 
 ;; `require' is used to dynamically determine whether a dependency of a
@@ -481,7 +487,21 @@
                               (error-diag 'name-a
                                           (current-source-location)
                                           'exp
-                                          (list result :::)))
+                                          (list result :::)
+                                          #:show-evaluated? (not exception-in-arguments?))
+                              (when exception-in-arguments?
+                                (for-each
+                                 (lambda (x)
+                                   (if (car x)
+                                       (let ((kind (car (cdddr x)))
+                                             (arg-list (cadr (cdddr x))))
+                                         (deal-with-exception #f 'exp
+                                                              (if (pair? kind)
+                                                                  (cdr kind)
+                                                                  kind)
+                                                              arg-list
+                                                              #:skip-expr? #t))))
+                                 (list result :::))))
                             (not (not final))))))
                    ((name e :::)
                     #'(begin
