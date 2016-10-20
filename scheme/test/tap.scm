@@ -572,8 +572,8 @@
 (define-tap-test (pass-if-string-ci=? a b) (string-ci=? a b))
 (define-tap-test (pass-if-not-string-ci=? a b) (not (string-ci=? a b)))
 
-(define-tap-test (pass-if-re-match p s) (string-match p s))
-(define-tap-test (pass-if-not-re-match p s) (not (string-match p s)))
+(define-tap-test (pass-if-re-match pattern string) (string-match pattern string))
+(define-tap-test (pass-if-not-re-match pattern string) (not (string-match pattern string)))
 
 (define-tap-test #t (pass-if-no-exception expression)
   (any-exception-fails expression))
