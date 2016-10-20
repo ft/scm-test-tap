@@ -224,6 +224,20 @@
     (pp-expression form))
   (format #t "#~%"))
 
+(define (handle-wrong-number-of-arguments name loc input-a input)
+  (let ((name* (syntax->datum name))
+        (expected (syntax->datum input-a))
+        (actual (syntax->datum input)))
+    (format #t "#~%# failed test: ~s~%" *test-description*)
+    (format #t "#~%# Wrong number of arguments with: ~a~%" name*)
+    (format #t "#~%# location:~%")
+    (print-location loc)
+    (format #t "#~%# expected form:~%")
+    (pp-expression (cons name* expected))
+    (format #t "#~%# actual form:~%")
+    (pp-expression (cons name* actual))
+    (format #t "#~%")))
+
 ;; `deal-with-exception' diagnoses caught exceptions.
 (define* (deal-with-exception loc exp name argument #:key (skip-expr? #f))
 
@@ -435,6 +449,8 @@
                                expression)))
                  (syntax-case stx ()
                    ((name input :::)
+                    (= (length #'(input-a ...))
+                       (length #'(input :::)))
                     (with-syntax (((result :::)
                                    (generate-temporaries #'(input :::)))
                                   ((value :::)
@@ -466,7 +482,17 @@
                                           (current-source-location)
                                           'exp
                                           (list result :::)))
-                            final)))))))))))))
+                            final))))
+                   ((name e :::)
+                    #'(begin
+                        (tap/result *test-case-count*
+                                    *test-description*
+                                    *test-case-todo*
+                                    #f)
+                        (handle-wrong-number-of-arguments
+                         'name
+                         (current-source-location)
+                         (list 'input-a ...) (list 'e :::)))))))))))))
 
 ;; pass-if-*
 
