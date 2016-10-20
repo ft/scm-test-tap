@@ -9,4 +9,5 @@
              (cdr thing)))
       '((with-test-bundle . 1)
         (with-fs-test-bundle . 1)
+        (with-ellipsis . 1)
         (define-test . 1)))
