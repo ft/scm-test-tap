@@ -498,8 +498,7 @@
                               (error-diag 'name-a
                                           (current-source-location)
                                           'exp
-                                          (list result :::)
-                                          #:show-evaluated? (not exception-in-arguments?))
+                                          (list result :::))
                               (when exception-in-arguments?
                                 (for-each exception-helper (list result :::)))
                               (when late-exception?
