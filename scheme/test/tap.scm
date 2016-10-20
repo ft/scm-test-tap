@@ -476,7 +476,18 @@
                                  (failed? (or (and (not allow-exception?)
                                                    exception-in-arguments?)
                                               late-exception?
-                                              (not final))))
+                                              (not final)))
+                                 (exception-helper
+                                  (lambda (x)
+                                    (if (car x)
+                                        (let ((kind (car (cdddr x)))
+                                              (arg-list (cadr (cdddr x))))
+                                          (deal-with-exception #f 'exp
+                                                               (if (pair? kind)
+                                                                   (cdr kind)
+                                                                   kind)
+                                                               arg-list
+                                                               #:skip-expr? #t))))))
                             (tap/result *test-case-count*
                                         *test-description*
                                         *test-case-todo*
@@ -490,18 +501,9 @@
                                           (list result :::)
                                           #:show-evaluated? (not exception-in-arguments?))
                               (when exception-in-arguments?
-                                (for-each
-                                 (lambda (x)
-                                   (if (car x)
-                                       (let ((kind (car (cdddr x)))
-                                             (arg-list (cadr (cdddr x))))
-                                         (deal-with-exception #f 'exp
-                                                              (if (pair? kind)
-                                                                  (cdr kind)
-                                                                  kind)
-                                                              arg-list
-                                                              #:skip-expr? #t))))
-                                 (list result :::))))
+                                (for-each exception-helper (list result :::)))
+                              (when late-exception?
+                                (exception-helper final*)))
                             (not (not final))))))
                    ((name e :::)
                     #'(begin

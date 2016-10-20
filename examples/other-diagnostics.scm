@@ -23,4 +23,7 @@
     (pass-if-= (+ "2" 2) (- "4" 2)))
 
   (define-test "Show diagnostics: Unexpected exception"
-    (pass-if-true (throw 'crap))))
+    (pass-if-true (throw 'crap)))
+
+  (define-test "Show diagnostics: Late exception"
+    (pass-if-= "2" 2)))
