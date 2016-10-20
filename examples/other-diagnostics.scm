@@ -19,6 +19,8 @@
   (define-test "Show diagnostics: Wrong use of a procedure"
     (pass-if-true (cons 1 2 3)))
 
+  (define-test "Show diagnostics: More than one exception"
+    (pass-if-= (+ "2" 2) (- "4" 2)))
+
   (define-test "Show diagnostics: Unexpected exception"
-    (pass-if-true (throw 'crap)))
-  )
+    (pass-if-true (throw 'crap))))
