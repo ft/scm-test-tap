@@ -216,16 +216,12 @@
   (print-location loc)
   (format #t "#~%# expression:~%")
   (pp-expression expression)
-  (format #t "#~%# evaluated form:~%#     (~a" test)
-  (let next ((d data))
-    (cond ((null? d) #t)
-          (else
-           (let ((i (car d)))
-             (cond ((eq? i 'close) (format #t ")~%#~%"))
-                   ((string? i) (format #t " ~s" i))
-                   ((thunk? i) (i))
-                   (else (format #t " ~a" i)))
-             (next (cdr d)))))))
+  (format #t "#~%# evaluated form:~%")
+  (let ((form (let loop ((rest data) (acc (list test)))
+                (if (null? rest)
+                    (reverse acc)
+                    (loop (cdr rest) (cons (cdar rest) acc))))))
+    (pp-expression form)))
 
 ;; `deal-with-exception' diagnoses caught exceptions.
 (define* (deal-with-exception loc exp name argument #:key (skip-expr? #f))
@@ -397,50 +393,111 @@
         (tap/comment (string-append "C" common))
         (tap/comment (string-append "Unexpectedly c" common)))))
 
-;; `define-tap-test' is a macro that generates the `pass-if-*' macros. So all
-;; those macros will behave exactly the same. The `pass-if-*' code needs to be
-;; made up of macros, so the input expressions are available to the diagnostic
-;; code in case of failing tests.
-(define-syntax define-tap-test
+(define-syntax with-exception-handling
   (lambda (x)
     (syntax-case x ()
-      ((_ (name a0 a1 ...) exp)
-       #'(define-syntax name
-           (lambda (x)
-             (syntax-case x ()
-               ((_ a0 a1 ...)
-                #'(let ((result (catch #t
-                                  (lambda () exp)
-                                  (lambda (a . k)
-                                    (caught-title #f)
-                                    (deal-with-exception (current-source-location)
-                                                         (quote exp) a k)
-                                    (tap/comment "")
-                                    (tap/comment "The following test will therefore fail!")
-                                    #f))))
-                    (tap/result *test-case-count*
-                                *test-description*
-                                *test-case-todo*
-                                result)
-                    (if (and (or *todo-prints-diag*
-                                 (not *test-case-todo*))
-                             (not result))
-                        (error-diag (quote name)
-                                    (current-source-location)
-                                    (quote exp)
-                                    (catch #t
-                                      (lambda ()
-                                        (list a0 a1 ...))
-                                      (lambda (a . k)
-                                        (list
-                                         (format #f "Caught exception: ~a" a)
-                                         'close
-                                         (lambda ()
-                                           (caught-title #t)
-                                           (deal-with-exception #f (quote exp) a k
-                                                                #:skip-expr? #t))))))))))))))))
+      ((_ exp)
+       #'(catch #t
+           (lambda () (cons #f exp))
+           (lambda (a . k)
+             (cons #t (list (current-source-location)
+                            (quote exp)
+                            a k))))))))
+
+(define-syntax define-tap-test
+  (lambda (stx-a)
+    (syntax-case stx-a ()
+      ((_ (name-a input-a ...) exp)
+       #'(define-tap-test #f (name-a input-a ...) exp))
+      ((_ allow-exception? (name-a input-a ...) exp)
+       #'(begin
+           (define-syntax name-a
+             (lambda (stx)
+               (with-ellipsis :::
+                 (define (tree-map f p? t)
+                   (define (atom? x)
+                     (not (pair? x)))
+                   (syntax-case t ()
+                     (() t)
+                     (e (p? #'e) (f t))
+                     (e (atom? #'e) #'e)
+                     (else (cons (tree-map f p? (car t))
+                                 (tree-map f p? (cdr t))))))
+                 (define (xchange-expressions in val expression)
+                   (let ((ex (let loop ((i in) (v val) (acc '()))
+                               (if (null? i)
+                                   (reverse acc)
+                                   (loop (cdr i) (cdr v)
+                                         (cons (cons (car i) (car v)) acc))))))
+                     (tree-map (lambda (x) (assoc-ref ex x))
+                               (lambda (x) (member x in))
+                               expression)))
+                 (syntax-case stx ()
+                   ((name input :::)
+                    (with-syntax (((result :::)
+                                   (generate-temporaries #'(input :::)))
+                                  ((value :::)
+                                   (generate-temporaries #'(input :::))))
+                      (with-syntax ((exp* (xchange-expressions #'(input-a ...)
+                                                               (if allow-exception?
+                                                                   #'(result :::)
+                                                                   #'(value :::))
+                                                               #'exp)))
+                        #'(let* ((result (with-exception-handling input)) :::
+                                 (value (cdr result)) :::
+                                 (final* (with-exception-handling exp*))
+                                 (exception-in-arguments?
+                                  (not (not (member #t (map car (list result :::))))))
+                                 (late-exception? (car final*))
+                                 (final (cdr final*))
+                                 (failed? (or (and (not allow-exception?)
+                                                   exception-in-arguments?)
+                                              late-exception?
+                                              (not final))))
+                            (tap/result *test-case-count*
+                                        *test-description*
+                                        *test-case-todo*
+                                        (not failed?))
+                            (when (and (or *todo-prints-diag*
+                                           (not *test-case-todo*))
+                                       failed?)
+                              (error-diag 'name-a
+                                          (current-source-location)
+                                          'exp
+                                          (list result :::)))
+                            final)))))))))))))
 
 ;; pass-if-*
+
+(define yes (lambda (x) #t))
+
+(define-syntax handle-exception
+  (lambda (x)
+    (syntax-case x ()
+      ((_ exp sel mod)
+       #'(if (car exp)
+             (match (cdr exp)
+               ((loc expression name argument)
+                (mod (sel name))))
+             (mod #f))))))
+
+(define-syntax any-exception-fails
+  (lambda (x)
+    (syntax-case x ()
+      ((_ e) #'(handle-exception e yes not)))))
+
+(define-syntax require-any-exception
+  (lambda (x)
+    (syntax-case x ()
+      ((_ e) #'(handle-exception e yes identity)))))
+
+(define-syntax require-specific-exception
+  (lambda (x)
+    (syntax-case x ()
+      ((_ exception expression)
+       #'(handle-exception expression
+                           (lambda (x) (eq? (cdr exception) x))
+                           identity)))))
 
 (define-tap-test (pass-if-= a b) (= a b))
 (define-tap-test (pass-if-not-= a b) (not (= a b)))
@@ -468,26 +525,12 @@
 (define-tap-test (pass-if-re-match p s) (string-match p s))
 (define-tap-test (pass-if-not-re-match p s) (not (string-match p s)))
 
-(define-syntax caught-exception
-  (lambda (x)
-    (syntax-case x (exception)
-      ((_ (exception e) c0 c1 ...)
-       #'(catch #t
-           (lambda ()
-             (catch e
-               (lambda ()
-                 c0 c1 ...
-                 #f)
-               (lambda (ia . ik)
-                 #t)))
-           (lambda (oa . ok)
-             #f)))
-      ((_ c0 c1 ...)
-       #'(caught-exception (exception #t) c0 c1 ...)))))
-
-(define-tap-test (pass-if-no-exception c) (not (caught-exception c)))
-(define-tap-test (pass-if-any-exception c) (caught-exception c))
-(define-tap-test (pass-if-exception e c) (caught-exception (exception e) c))
+(define-tap-test #t (pass-if-no-exception expression)
+  (any-exception-fails expression))
+(define-tap-test #t (pass-if-any-exception expression)
+  (require-any-exception expression))
+(define-tap-test #t (pass-if-exception exception expression)
+  (require-specific-exception exception expression))
 
 (define-tap-test (pass-if-true x) x)
 (define-tap-test (pass-if-false x) (not x))
