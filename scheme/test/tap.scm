@@ -501,7 +501,8 @@
                                           (list result :::))
                               (when exception-in-arguments?
                                 (for-each exception-helper (list result :::)))
-                              (when late-exception?
+                              (when (and (not exception-in-arguments?)
+                                         late-exception?)
                                 (exception-helper final*)))
                             (not (not final))))))
                    ((name e :::)
