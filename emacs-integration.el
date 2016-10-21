@@ -10,4 +10,5 @@
       '((with-test-bundle . 1)
         (with-fs-test-bundle . 1)
         (with-ellipsis . 1)
+        (set-record-type-printer! . 1)
         (define-test . 1)))

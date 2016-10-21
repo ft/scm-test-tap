@@ -67,6 +67,8 @@
   #:use-module (ice-9 pretty-print)
   #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-9)
+  #:use-module (srfi srfi-9 gnu)
   #:export (pass-if-exception
             pass-if-any-exception
             pass-if-no-exception
@@ -209,20 +211,52 @@
                 #:display? #f
                 #:per-line-prefix "#     "))
 
+(define-record-type <exception>
+  (make-exception name arguments)
+  exception?
+  (name exception-name)
+  (arguments exception-arguments))
+
+(set-record-type-printer! <exception>
+  (lambda (record port)
+    (write-char #\# port)
+    (write-char #\[ port)
+    (write 'exception port)
+    (write-char #\space port)
+    (let ((name (exception-name record))
+          (arguments (exception-arguments record)))
+      (write name port)
+      (write-char #\space port)
+      (write (cond
+              ((null? arguments) '*empty-argument*)
+              ((<= (length arguments) 2) arguments)
+              (else (list (car arguments) '...)))
+             port))
+      (write-char #\] port)))
+
 ;; `error-diag' provides detailed diagnostic output for failed tests.
-(define* (error-diag test loc expression data #:key (show-evaluated? #t))
+(define (error-diag test loc expression data)
+  (define (diag-arg x)
+    (let ((is-exception? (car x))
+          (value (cdr x)))
+      (if is-exception?
+          (let ((name (caddr value))
+                (args (cadddr value)))
+            (make-exception name args))
+          value)))
   (format #t "#~%# failed test: ~s~%" *test-description*)
   (format #t "#~%# location:~%")
   (print-location loc)
   (format #t "#~%# expression:~%")
   (pp-expression expression)
-  (when show-evaluated?
-    (format #t "#~%# evaluated form:~%")
-    (let ((form (let loop ((rest data) (acc (list test)))
-                  (if (null? rest)
-                      (reverse acc)
-                      (loop (cdr rest) (cons (cdar rest) acc))))))
-      (pp-expression form)))
+  (format #t "#~%# evaluated form:~%")
+  (let ((form (let loop ((rest data) (acc (list test)))
+                (if (null? rest)
+                    (reverse acc)
+                    (let ((this (car rest))
+                          (rest (cdr rest)))
+                      (loop rest (cons (diag-arg this) acc)))))))
+    (pp-expression form))
   (format #t "#~%"))
 
 (define (handle-wrong-number-of-arguments name loc input-a input)
