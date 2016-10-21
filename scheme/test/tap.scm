@@ -247,10 +247,12 @@
   (format #t "#~%# failed test: ~s~%" *test-description*)
   (format #t "#~%# location:~%")
   (print-location loc)
+  (format #t "#~%# form:~%")
+  (pp-expression test)
   (format #t "#~%# expression:~%")
   (pp-expression expression)
   (format #t "#~%# evaluated form:~%")
-  (let ((form (let loop ((rest data) (acc (list test)))
+  (let ((form (let loop ((rest data) (acc (list (car test))))
                 (if (null? rest)
                     (reverse acc)
                     (let ((this (car rest))
@@ -529,7 +531,7 @@
                             (when (and (or *todo-prints-diag*
                                            (not *test-case-todo*))
                                        failed?)
-                              (error-diag 'name-a
+                              (error-diag '(name-a input-a ...)
                                           (current-source-location)
                                           'exp
                                           (list result :::))
