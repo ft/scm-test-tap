@@ -293,6 +293,8 @@
   (tap/comment (format #f "    ~s" (exception-name excp)))
   (tap/comment "")
   (cond ((member (exception-name excp) format-error-msgs)
+         ;; This expansion of ‘match’ seems to cause the compiler to yield two
+         ;; unused-variable warnings: else, failure. Just for the record.
          (match (exception-arguments excp)
            ((#f fmt (arg) #f)
             (tap/comment (format #f fmt arg))

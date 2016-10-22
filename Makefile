@@ -7,7 +7,7 @@ all:
 	@printf 'Use either "make doc" or "make test".\n'
 
 compile:
-	(cd scheme/test && guild compile -o tap.go tap.scm;)
+	(cd scheme/test && guild compile -Wunsupported-warning -Wunused-variable -Wunbound-variable -Warity-mismatch -Wduplicate-case-datum -Wbad-case-datum -Wformat -o tap.go tap.scm;)
 
 doc:
 	@(cd doc && $(MAKE) all;)
