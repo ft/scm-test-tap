@@ -237,7 +237,7 @@
       (write-char #\] port)))
 
 ;; `error-diag' provides detailed diagnostic output for failed tests.
-(define (error-diag test full loc expression data)
+(define (error-diag test full loc expression evaled data)
   (format #t "#~%# failed test: ~s~%" *test-description*)
   (format #t "#~%# location:~%")
   (print-location loc)
@@ -255,6 +255,8 @@
                           (rest (cdr rest)))
                       (loop rest (cons this acc)))))))
     (pp-expression form))
+  (format #t "#~%# evaluated expression:~%")
+  (pp-expression evaled)
   (format #t "#~%"))
 
 (define (handle-wrong-number-of-arguments name loc input-a input)
@@ -476,6 +478,10 @@
                      (tree-map (lambda (x) (assoc-ref ex x))
                                (lambda (x) (member x in))
                                expression)))
+                 (define (quasiquote-temps temps expression)
+                   (tree-map (lambda (x) (list #'unquote x))
+                             (lambda (x) (member x temps))
+                             (list #'quasiquote expression)))
                  (syntax-case stx ()
                    ((name input :::)
                     (= (length #'(input-a ...))
@@ -485,38 +491,41 @@
                       (with-syntax ((exp* (xchange-expressions #'(input-a ...)
                                                                #'(result :::)
                                                                #'exp)))
-                        #'(let* ((result (with-exception-handling input)) :::
-                                 (final (with-exception-handling exp*))
-                                 (exception-in-arguments?
-                                  (not (not (member #t (map exception?
-                                                            (list result :::))))))
-                                 (late-exception? (exception? final))
-                                 (failed? (or (and (not allow-exception?)
-                                                   exception-in-arguments?)
-                                              late-exception?
-                                              (not final)))
-                                 (exception-helper
-                                  (lambda (x)
-                                    (if (exception? x)
-                                        (deal-with-exception x)))))
-                            (tap/result *test-case-count*
-                                        *test-description*
-                                        *test-case-todo*
-                                        (not failed?))
-                            (when (and (or *todo-prints-diag*
-                                           (not *test-case-todo*))
-                                       failed?)
-                              (error-diag '(name-a input-a ...)
-                                          '(name-a input :::)
-                                          (current-source-location)
-                                          'exp
-                                          (list result :::))
-                              (when exception-in-arguments?
-                                (for-each exception-helper (list result :::)))
-                              (when (and (not exception-in-arguments?)
-                                         late-exception?)
-                                (exception-helper final)))
-                            (not (not final))))))
+                        (with-syntax ((evaled (quasiquote-temps #'(result :::)
+                                                                #'exp*)))
+                          #'(let* ((result (with-exception-handling input)) :::
+                                   (final (with-exception-handling exp*))
+                                   (exception-in-arguments?
+                                    (not (not (member #t (map exception?
+                                                              (list result :::))))))
+                                   (late-exception? (exception? final))
+                                   (failed? (or (and (not allow-exception?)
+                                                     exception-in-arguments?)
+                                                late-exception?
+                                                (not final)))
+                                   (exception-helper
+                                    (lambda (x)
+                                      (if (exception? x)
+                                          (deal-with-exception x)))))
+                              (tap/result *test-case-count*
+                                          *test-description*
+                                          *test-case-todo*
+                                          (not failed?))
+                              (when (and (or *todo-prints-diag*
+                                             (not *test-case-todo*))
+                                         failed?)
+                                (error-diag '(name-a input-a ...)
+                                            '(name-a input :::)
+                                            (current-source-location)
+                                            'exp
+                                            evaled
+                                            (list result :::))
+                                (when exception-in-arguments?
+                                  (for-each exception-helper (list result :::)))
+                                (when (and (not exception-in-arguments?)
+                                           late-exception?)
+                                  (exception-helper final)))
+                              (not (not final)))))))
                    ((name e :::)
                     #'(begin
                         (tap/result *test-case-count*
