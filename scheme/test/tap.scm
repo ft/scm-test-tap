@@ -481,7 +481,7 @@
                                (lambda (x) (member x in))
                                expression)))
                  (define (quasiquote-temps temps expression)
-                   (tree-map (lambda (x) (list #'unquote x))
+                   (tree-map (lambda (x) #`(unquote #,x))
                              (lambda (x) (member x temps))
                              (list #'quasiquote expression)))
                  (syntax-case stx ()
