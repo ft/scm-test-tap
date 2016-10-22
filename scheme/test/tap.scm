@@ -235,7 +235,7 @@
       (write-char #\] port)))
 
 ;; `error-diag' provides detailed diagnostic output for failed tests.
-(define (error-diag test loc expression data)
+(define (error-diag test full loc expression data)
   (define (diag-arg x)
     (let ((is-exception? (car x))
           (value (cdr x)))
@@ -247,6 +247,8 @@
   (format #t "#~%# failed test: ~s~%" *test-description*)
   (format #t "#~%# location:~%")
   (print-location loc)
+  (format #t "#~%# full test-expression:~%")
+  (pp-expression full)
   (format #t "#~%# form:~%")
   (pp-expression test)
   (format #t "#~%# expression:~%")
@@ -532,6 +534,7 @@
                                            (not *test-case-todo*))
                                        failed?)
                               (error-diag '(name-a input-a ...)
+                                          '(name-a input :::)
                                           (current-source-location)
                                           'exp
                                           (list result :::))
