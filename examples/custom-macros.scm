@@ -13,4 +13,4 @@
   (define-test "We can define new primitives: pass-if-string?"
     (pass-if-string? 123))
   (define-test "Costum macro pass-if-valid-type? dislikes lists"
-    (pass-if-valid-type? '(a b c))))
+    (pass-if-valid-type? (list 'a 'b 'c (+ 1 2)))))
