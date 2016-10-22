@@ -286,7 +286,7 @@
 
   (define (else-handler args)
     (tap/comment "argument:")
-    (tap/comment (format #f "    ~s" argument))
+    (tap/comment (format #f "    ~s" (exception-arguments excp)))
     (tap/comment ""))
 
   (tap/comment "exception:")
