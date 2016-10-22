@@ -212,10 +212,12 @@
                 #:per-line-prefix "#     "))
 
 (define-record-type <exception>
-  (make-exception name arguments)
+  (make-exception name arguments source-location expression)
   exception?
   (name exception-name)
-  (arguments exception-arguments))
+  (arguments exception-arguments)
+  (source-location exception-location)
+  (expression exception-expression))
 
 (set-record-type-printer! <exception>
   (lambda (record port)
@@ -236,14 +238,6 @@
 
 ;; `error-diag' provides detailed diagnostic output for failed tests.
 (define (error-diag test full loc expression data)
-  (define (diag-arg x)
-    (let ((is-exception? (car x))
-          (value (cdr x)))
-      (if is-exception?
-          (let ((name (caddr value))
-                (args (cadddr value)))
-            (make-exception name args))
-          value)))
   (format #t "#~%# failed test: ~s~%" *test-description*)
   (format #t "#~%# location:~%")
   (print-location loc)
@@ -259,7 +253,7 @@
                     (reverse acc)
                     (let ((this (car rest))
                           (rest (cdr rest)))
-                      (loop rest (cons (diag-arg this) acc)))))))
+                      (loop rest (cons this acc)))))))
     (pp-expression form))
   (format #t "#~%"))
 
@@ -278,7 +272,7 @@
     (format #t "#~%")))
 
 ;; `deal-with-exception' diagnoses caught exceptions.
-(define* (deal-with-exception loc exp name argument #:key (skip-expr? #f))
+(define (deal-with-exception excp)
 
   (define format-error-msgs '(unbound-variable
                               wrong-number-of-args
@@ -289,19 +283,11 @@
     (tap/comment (format #f "    ~s" argument))
     (tap/comment ""))
 
-  (when loc
-    (tap/comment "")
-    (print-location loc))
-  (unless skip-expr?
-    (tap/comment "")
-    (tap/comment "expression:")
-    (pp-expression exp)
-    (tap/comment ""))
   (tap/comment "exception:")
-  (tap/comment (format #f "    ~s" name))
+  (tap/comment (format #f "    ~s" (exception-name excp)))
   (tap/comment "")
-  (cond ((member name format-error-msgs)
-         (match argument
+  (cond ((member (exception-name excp) format-error-msgs)
+         (match (exception-arguments excp)
            ((#f fmt (arg) #f)
             (tap/comment (format #f fmt arg))
             (tap/comment ""))
@@ -309,11 +295,11 @@
             (tap/comment (format #f "In procedure ~a: " proc))
             (tap/comment (string-append "    " (apply format #f fmt args)))
             (tap/comment ""))
-           (else (else-handler argument))))
-        ((null? argument)
+           (else (else-handler (exception-arguments excp)))))
+        ((null? (exception-arguments excp))
          (tap/comment "Empty exception argument.")
          (tap/comment ""))
-        (else (else-handler argument))))
+        (else (else-handler (exception-arguments excp)))))
 
 ;; `require' is used to dynamically determine whether a dependency of a
 ;; test-case or even a test-bundle is satisfied and either skip the test or the
@@ -457,11 +443,10 @@
     (syntax-case x ()
       ((_ exp)
        #'(catch #t
-           (lambda () (cons #f exp))
-           (lambda (a . k)
-             (cons #t (list (current-source-location)
-                            (quote exp)
-                            a k))))))))
+           (lambda () exp)
+           (lambda (key . arguments)
+             (make-exception key arguments
+                             (current-source-location) (quote exp))))))))
 
 (define-syntax define-tap-test
   (lambda (stx-a)
@@ -496,36 +481,24 @@
                     (= (length #'(input-a ...))
                        (length #'(input :::)))
                     (with-syntax (((result :::)
-                                   (generate-temporaries #'(input :::)))
-                                  ((value :::)
                                    (generate-temporaries #'(input :::))))
                       (with-syntax ((exp* (xchange-expressions #'(input-a ...)
-                                                               (if allow-exception?
-                                                                   #'(result :::)
-                                                                   #'(value :::))
+                                                               #'(result :::)
                                                                #'exp)))
                         #'(let* ((result (with-exception-handling input)) :::
-                                 (value (cdr result)) :::
-                                 (final* (with-exception-handling exp*))
+                                 (final (with-exception-handling exp*))
                                  (exception-in-arguments?
-                                  (not (not (member #t (map car (list result :::))))))
-                                 (late-exception? (car final*))
-                                 (final (cdr final*))
+                                  (not (not (member #t (map exception?
+                                                            (list result :::))))))
+                                 (late-exception? (exception? final))
                                  (failed? (or (and (not allow-exception?)
                                                    exception-in-arguments?)
                                               late-exception?
                                               (not final)))
                                  (exception-helper
                                   (lambda (x)
-                                    (if (car x)
-                                        (let ((kind (car (cdddr x)))
-                                              (arg-list (cadr (cdddr x))))
-                                          (deal-with-exception #f 'exp
-                                                               (if (pair? kind)
-                                                                   (cdr kind)
-                                                                   kind)
-                                                               arg-list
-                                                               #:skip-expr? #t))))))
+                                    (if (exception? x)
+                                        (deal-with-exception x)))))
                             (tap/result *test-case-count*
                                         *test-description*
                                         *test-case-todo*
@@ -542,7 +515,7 @@
                                 (for-each exception-helper (list result :::)))
                               (when (and (not exception-in-arguments?)
                                          late-exception?)
-                                (exception-helper final*)))
+                                (exception-helper final)))
                             (not (not final))))))
                    ((name e :::)
                     #'(begin
@@ -564,10 +537,8 @@
   (lambda (x)
     (syntax-case x ()
       ((_ exp sel mod)
-       #'(if (car exp)
-             (match (cdr exp)
-               ((loc expression name argument)
-                (mod (sel name))))
+       #'(if (exception? exp)
+             (mod (sel (exception-name exp)))
              (mod #f))))))
 
 (define-syntax any-exception-fails
@@ -585,7 +556,7 @@
     (syntax-case x ()
       ((_ exception expression)
        #'(handle-exception expression
-                           (lambda (x) (eq? (cdr exception) x))
+                           (lambda (x) (eq? exception x))
                            identity)))))
 
 (define-tap-test (pass-if-= a b) (= a b))
