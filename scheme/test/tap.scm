@@ -85,6 +85,7 @@
             require
             todo
             define-test
+            define-tap-test
             with-fs-test-bundle
             with-test-bundle
             force-import
