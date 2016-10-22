@@ -436,10 +436,11 @@
          #'(with-test-bundle (hierarchy ...) code ...))))))
 
 (define (caught-title expected?)
-  (let ((common "aught exception while evaluating test expression!"))
+  (let ((common "aught exception(s) while evaluating test expression!"))
     (if expected?
         (tap/comment (string-append "C" common))
-        (tap/comment (string-append "Unexpectedly c" common)))))
+        (tap/comment (string-append "Unexpectedly c" common)))
+    (tap/comment "")))
 
 (define-syntax with-exception-handling
   (lambda (x)
@@ -522,9 +523,11 @@
                                             evaled
                                             (list result :::))
                                 (when exception-in-arguments?
+                                  (caught-title allow-exception?)
                                   (for-each exception-helper (list result :::)))
                                 (when (and (not exception-in-arguments?)
                                            late-exception?)
+                                  (caught-title #f)
                                   (exception-helper final)))
                               (not (not final)))))))
                    ((name e :::)
