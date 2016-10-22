@@ -455,6 +455,11 @@
              (make-exception key arguments
                              (current-source-location) (quote exp))))))))
 
+(define (maybe-list x)
+  (if (list? x)
+      (syntax->datum #`(quote #,x))
+      x))
+
 (define-syntax define-tap-test
   (lambda (stx-a)
     (syntax-case stx-a ()
@@ -484,7 +489,7 @@
                                (lambda (x) (member x in))
                                expression)))
                  (define (quasiquote-temps temps expression)
-                   (tree-map (lambda (x) #`(unquote #,x))
+                   (tree-map (lambda (x) #`(unquote (maybe-list #,x)))
                              (lambda (x) (member x temps))
                              (list #'quasiquote expression)))
                  (syntax-case stx ()
