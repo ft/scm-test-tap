@@ -515,6 +515,7 @@
                                                      exception-in-arguments?)
                                                 late-exception?
                                                 (not final)))
+                                   (success? (not failed?))
                                    (exception-helper
                                     (lambda (x)
                                       (if (exception? x)
@@ -522,7 +523,7 @@
                               (tap/result *test-case-count*
                                           *test-description*
                                           *test-case-todo*
-                                          (not failed?))
+                                          success?)
                               (when (and (or *todo-prints-diag*
                                              (not *test-case-todo*))
                                          failed?)
@@ -539,7 +540,7 @@
                                            late-exception?)
                                   (caught-title #f)
                                   (exception-helper final)))
-                              (not (not final)))))))
+                              success?)))))
                    ((name e :::)
                     #'(begin
                         (tap/result *test-case-count*
