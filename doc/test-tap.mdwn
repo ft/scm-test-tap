@@ -13,6 +13,8 @@
 
 (*define-test* "test name" **...**)
 
+(*define-tap-test* (template ...) (expression ...))
+
 (*todo* **...**)
 
 (*require* **...**)
@@ -211,6 +213,16 @@ second the expression to be evaluated.
 * `(pass-if-exception SYMBOL EXPRESSION)`
 
 
+## Custom Tests
+
+The framework provides a macro ‘*define-tap-test*’ that can be used to define
+custum test macros. Macros defined in this way exhibit all features, that the
+core macros described above offer, because those are indeed defined in terms of
+‘*define-tap-test*’ as well.
+
+* `(define-tap-test TEMPLATE EXPRESSION)`
+
+
 # Utilities
 
 # Other API
@@ -268,6 +280,11 @@ See the “Configuration” section below for details about how to control how t
 file name of the test-script is turned into a hierarchy list.
 
 
+## Dianostics
+
+TODO
+
+
 ## Configuration
 
 TODO
@@ -288,6 +305,19 @@ TODO
 ~~~~~~~{.scheme}
 (define-test "test: re-match"
   (pass-if-re-match "^Does.*match" "Does this match?"))
+~~~~~~~
+
+## Define and use a custom test macro
+
+~~~~~~~{.scheme}
+(define-tap-test (pass-if-string? datum)
+  (string? datum))
+
+(define foo "bar")
+
+(with-test-bundle (demo custom-tests)
+  (define-test "Check if foo is a string"
+    (pass-if-true foo)))
 ~~~~~~~
 
 
