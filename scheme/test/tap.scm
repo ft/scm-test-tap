@@ -74,9 +74,15 @@
             pass-if-no-exception
             pass-if-=             pass-if-not-=
             pass-if-~=            pass-if-not-~=
+            pass-if-<             pass-if-not-<
+            pass-if->             pass-if-not->
+            pass-if-<=            pass-if-not-<=
+            pass-if->=            pass-if-not->=
+            pass-if-zero?         pass-if-not-zero?
             pass-if-eq?           pass-if-not-eq?
             pass-if-eqv?          pass-if-not-eqv?
             pass-if-equal?        pass-if-not-equal?
+            pass-if-null?         pass-if-not-null?
             pass-if-string=?      pass-if-not-string=?
             pass-if-string-ci=?   pass-if-not-string-ci=?
             pass-if-re-match      pass-if-not-re-match
@@ -592,6 +598,21 @@
 (define-tap-test (pass-if-not-~= a b eps) (not (and (< a (+ b eps))
                                                     (> a (- b eps)))))
 
+(define-tap-test (pass-if-< a b) (< a b))
+(define-tap-test (pass-if-not-< a b) (< a b))
+
+(define-tap-test (pass-if-> a b) (> a b))
+(define-tap-test (pass-if-not-> a b) (> a b))
+
+(define-tap-test (pass-if-<= a b) (<= a b))
+(define-tap-test (pass-if-not-<= a b) (<= a b))
+
+(define-tap-test (pass-if->= a b) (>= a b))
+(define-tap-test (pass-if-not->= a b) (>= a b))
+
+(define-tap-test (pass-if-zero? a) (zero? a))
+(define-tap-test (pass-if-not-zero? a) (zero? a))
+
 (define-tap-test (pass-if-eq? a b) (eq? a b))
 (define-tap-test (pass-if-not-eq? a b) (not (eq? a b)))
 
@@ -600,6 +621,9 @@
 
 (define-tap-test (pass-if-equal? a b) (equal? a b))
 (define-tap-test (pass-if-not-equal? a b) (not (equal? a b)))
+
+(define-tap-test (pass-if-null? a) (null? a))
+(define-tap-test (pass-if-not-null? a) (null? a))
 
 (define-tap-test (pass-if-string=? a b) (string=? a b))
 (define-tap-test (pass-if-not-string=? a b) (not (string=? a b)))
