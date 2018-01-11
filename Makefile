@@ -2,6 +2,7 @@ SH = /bin/sh
 
 TESTGUILE = ./run-single-test
 PROVE = prove --merge --verbose --color -e '$(TESTGUILE)'
+GUILD_BINARY = guild
 
 all:
 	@printf 'Use either "make doc" or "make test".\n'
