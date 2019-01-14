@@ -3,7 +3,7 @@ PDF = test-tap.pdf
 HTML = test-tap.html
 INFO = test-tap.info
 
-COMMONOPTIONS = --self-contained --number-sections --normalize --smart --toc
+COMMONOPTIONS = --self-contained --number-sections --toc
 
 TEX_META = -V date='\today' --highlight-style=monochrome
 HTML_META = -c manual.css
