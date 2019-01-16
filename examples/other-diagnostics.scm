@@ -4,6 +4,9 @@
 
 (use-modules (test tap))
 
+(define (testme n)
+  (let ((foo "x")) (= (string-append foo "Xx") n)))
+
 (with-test-bundle (example diagnostics other)
   (no-plan)
 
@@ -26,4 +29,7 @@
     (pass-if-true (throw 'crap)))
 
   (define-test "Show diagnostics: Late exception"
-    (pass-if-= "2" 2)))
+    (pass-if-= "2" 2))
+
+  (define-test "Show diagnostics: Backtrace helps with pass-if-true"
+    (pass-if-true (testme 2))))

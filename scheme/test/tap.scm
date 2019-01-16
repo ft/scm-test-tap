@@ -61,6 +61,7 @@
 ;;   code won't bother.
 
 (define-module (test tap)
+  #:use-module (system vm frame)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (ice-9 optargs)
@@ -285,10 +286,28 @@
     (format #t "#~%")))
 
 (define (backtrace-frame->tap level frame)
-  (format #t "#     frame #~a: ~s~%"
+  (format #t "#   frame #~a: ~s~%"
           level
           (cons (frame-procedure-name frame)
-                (frame-arguments frame))))
+                (frame-arguments frame)))
+  (format #t "#     address: 0x~x" (frame-address frame))
+  (format #t "; stack-ptr: 0x~x" (frame-stack-pointer frame))
+  (format #t "; instr-ptr: 0x~x~%" (frame-instruction-pointer frame))
+  (format #t "#     previous: 0x~x" (frame-dynamic-link frame))
+  (format #t "; return: 0x~x~%" (frame-return-address frame))
+  (when (> (length (frame-bindings frame)) 0)
+    (format #t "#     bindings:~%"))
+  (let loop ((bs (frame-bindings frame)))
+    (if (null? bs)
+        #t
+        (let ((this (car bs)) (rest (cdr bs)))
+          (format #t "#     ~a (index/slot/repr: ~a/~a/~a)~%"
+                  (binding-name this)
+                  (binding-index this)
+                  (binding-slot this)
+                  (binding-representation this))
+          (format #t "#         ~s~%" (binding-ref this))
+          (loop rest)))))
 
 ;; `deal-with-exception' diagnoses caught exceptions.
 (define (deal-with-exception excp)
