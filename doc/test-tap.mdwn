@@ -322,6 +322,16 @@ If tests for string-ness of a value a needed often:
     (pass-if-string? foo)))
 ~~~~~~~
 
+Or to rehash the “complex” example from earlier:
+
+~~~~~~~{.scheme}
+(define-tap-test (pass-if-bool/int? datum)
+  (or (boolean? datum) (string? datum)))
+
+(define-test "The *foo* variable has valid type"
+  (pass-if-bool/int? *foo*))
+~~~~~~~
+
 
 # SEE ALSO
 
