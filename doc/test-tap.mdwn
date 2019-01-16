@@ -309,6 +309,8 @@ TODO
 
 ## Define and use a custom test macro
 
+If tests for string-ness of a value a needed often:
+
 ~~~~~~~{.scheme}
 (define-tap-test (pass-if-string? datum)
   (string? datum))
@@ -317,7 +319,7 @@ TODO
 
 (with-test-bundle (demo custom-tests)
   (define-test "Check if foo is a string"
-    (pass-if-true foo)))
+    (pass-if-string? foo)))
 ~~~~~~~
 
 
