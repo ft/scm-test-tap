@@ -243,7 +243,7 @@
               ((<= (length arguments) 2) arguments)
               (else (list (car arguments) '...)))
              port))
-      (write-char #\] port)))
+    (write-char #\] port)))
 
 ;; `error-diag' provides detailed diagnostic output for failed tests.
 (define (error-diag test full loc expression evaled data)
