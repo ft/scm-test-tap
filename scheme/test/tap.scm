@@ -301,7 +301,7 @@
     (if (null? bs)
         #t
         (let ((this (car bs)) (rest (cdr bs)))
-          (format #t "#     ~a (index/slot/repr: ~a/~a/~a)~%"
+          (format #t "#       ~a (index/slot/repr: ~a/~a/~a)~%"
                   (binding-name this)
                   (binding-index this)
                   (binding-slot this)
