@@ -554,27 +554,87 @@
                 (lambda (x) (member x temps))
                 (list #'quasiquote expression)))
 
+;; This is the main driver of the  whole library. It's a macro that defines
+;; other macros. In particular, tests expressed  by this library use one of
+;; the numerous pass-if-* macros. Like this:
+;;
+;;    (define-test "Basic arithmetic works"
+;;      (pass-if-= 65 (+ 23 42)))
+;;
+;; The ‘define-test’  form is another  macro, that basically  establishes a
+;; name for an  enclosed test and takes care of  collecting its result. The
+;; ‘pass-if-=’ form is a test define by this macro, like this:
+;;
+;;    (define-tap-test (pass-if-= a b) (= a b))
+;;
+;; The  idea here  is to  only express  the innermost  expression that  the
+;; actual test should  use, and hide all the additional  machinery, such as
+;; exception handling and as well as  helpful output in case of test failu-
+;; res.
 (define-syntax define-tap-test
   (lambda (stx-a)
     (syntax-case stx-a ()
+      ;; The simple form captures a name for the generated macro as well as
+      ;; a list  of arguments that macro expects, along  with an expression
+      ;; that will become the core  of the test the target macro expresses.
+      ;; The  implementation is a  call to the  general form of  this macro
+      ;; with its ‘allow-exception?’ argument set to ‘#f’.
       ((_ (name-a input-a ...) exp)
        #'(define-tap-test #f (name-a input-a ...) exp))
+      ;; This is  the general expander: If ‘allow-exception?’  is true, the
+      ;; generated  code expects exceptions  to be part  of the test  it is
+      ;; expressing.  If it's  false, exceptions constitute  unexpected er-
+      ;; rors.
       ((_ allow-exception? (name-a input-a ...) exp)
        #'(begin
+           ;; This is where the bodies of the generated ‘pass-if-*’ macros
+           ;; start.
            (define-syntax name-a
              (lambda (stx)
                (with-ellipsis :::
                  (syntax-case stx ()
+                   ;; Now the  generated macros all have a name  and a list
+                   ;; of  arguments. This  syntax-case has a  guard expres-
+                   ;; sion  that makes sure  the macro was called  with the
+                   ;; same number of arguments as the expression's spec, at
+                   ;; the time ‘define-tap-test’ was called, indicated.
                    ((name input :::)
                     (= (length #'(input-a ...))
                        (length #'(input :::)))
-                    (with-syntax (((result :::)
-                                   (generate-temporaries #'(input :::))))
-                      (with-syntax ((exp* (dtp:xchange-expressions #'(input-a ...)
-                                                                   #'(result :::)
-                                                                   #'exp)))
-                        (with-syntax ((evaled (dtp:quasiquote-temps #'(result :::)
-                                                                    #'exp*)))
+                    ;; One of the jobs of  a testing framework, in my mind,
+                    ;; is to  be helpful toward a user in  case a test case
+                    ;; does not pass its specification. This implementation
+                    ;; tries to do this by separately evaluating all of the
+                    ;; expressions from  its specification separately. That
+                    ;; way you don't get just  a final result of success or
+                    ;; failure, but also a set of intermediate results.
+                    ;;
+                    ;; (result ...) is a set of variables that will be used
+                    ;; to store the evaluated versions of each of the input
+                    ;; parameters.
+                    ;;
+                    ;; exp* is a  variant of the specification's expression
+                    ;; with  all of the  input parameters exchanged  by the
+                    ;; variables, that will carry their evaluated versions.
+                    ;;
+                    ;; evaled is a version  of exp* and therefore exp, that
+                    ;; quotes the entire  expression from the specification
+                    ;; except for the  result variables that were generated
+                    ;; earlier. This when evaluated  gives you a version of
+                    ;; the  input expression  with the  values of  the eva-
+                    ;; luated input parameters exchanged in place of them.
+                    (with-syntax (((result :::) (generate-temporaries #'(input :::))))
+                      (with-syntax ((exp* (dtp:xchange-expressions #'(input-a ...) #'(result :::) #'exp)))
+                        (with-syntax ((evaled (dtp:quasiquote-temps #'(result :::) #'exp*)))
+                          ;; Now first populate  all temporary result vari-
+                          ;; ables.  Then produce a final  result by evalu-
+                          ;; ating exp*. And that  is basically it. All the
+                          ;; rest is just handling different outcomes, suc-
+                          ;; cesses, failures, exceptions (are they allowed
+                          ;; or not? — did they  happen in one of the input
+                          ;; expressions or in  the evaluation of the final
+                          ;; expression?).  Code wise the body  of this let
+                          ;; is comparatively simple.
                           #'(let* ((result (with-exception-handling input)) :::
                                    (final (with-exception-handling exp*))
                                    (exception-in-arguments?
@@ -590,10 +650,12 @@
                                     (lambda (x)
                                       (if (exception? x)
                                           (deal-with-exception x)))))
+                              ;; Report the TAP result of the test.
                               (tap/result *test-case-count*
                                           *test-description*
                                           *test-case-todo*
                                           success?)
+                              ;; Output diagnostics if the result requires it.
                               (when (and (or *todo-prints-diag*
                                              (not *test-case-todo*))
                                          failed?)
@@ -610,7 +672,14 @@
                                            late-exception?)
                                   (caught-title #f)
                                   (exception-helper final)))
+                              ;; Make the entire ‘pass-if-*’ form return
+                              ;; the boolean result of the test.
                               success?)))))
+                   ;; Here's  the same  syntax-case as before,  but without
+                   ;; the guard, so it picks up all the cases where the ge-
+                   ;; nerated macro is called  with the wrong number of ar-
+                   ;; guments. This case will fail the invalid test and no-
+                   ;; tify the user via TAP output.
                    ((name e :::)
                     #'(begin
                         (tap/result *test-case-count*
@@ -621,6 +690,8 @@
                          'name
                          (current-source-location)
                          (list 'input-a ...) (list 'e :::))
+                        ;; In this misused case, the ‘pass-if-*’ form
+                        ;; returns boolean false.
                         #f)))))))))))
 
 ;; pass-if-*
