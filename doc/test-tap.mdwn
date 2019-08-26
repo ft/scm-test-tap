@@ -1,6 +1,6 @@
 # NAME
 
-(test tap) - TAP emitting test framework for scheme
+(test tap) - TAP emitting test framework for Scheme
 
 
 # SYNOPSIS
@@ -32,13 +32,43 @@
 output compliant with the TAP protocol. It features a fairly rich API for
 conveniently writing large, yet maintainable test suites.
 
-Currently, the code makes use of a number of non-standard features from GNU
-Guile. No other scheme implementation is actively supported at this point.
+The implementaton makes use of a number of non-standard features from
+GNU Guile, ranging from extensions (like purely functional record
+definitions) to the use of Guile internals (like access to backtraces in
+the framework's handling of exceptions). Therefore porting the framework
+to another Scheme implementation would be quite an undertaking. Nothing
+of the sort is planned.
 
 
 # TERMINOLOGY
 
-TODO
+*bundle*
+:    A bundle is a collection of test cases and a plan associated with a
+     hierarchy. Usually there is one bundle per file.
+
+*hierarchy*
+:    A hierarchy is a list of keywords that can be used categorise the
+     tests, grouped within it..
+
+*plan*
+:    A plan determines the number of expected tests in a test bundle. In
+     that case a plan is *deterministic*. It is also possible to define
+     *non-deterministic* plans. See the section about plans for details.
+
+*test case*
+:    A test case is the specification of a single test, that includes an
+     arbitrary title (a string that identifies the test case) and an
+     expression that is evaluated in order to determine the outcome of
+     that particular test case. This manual often uses *test* as a short
+     form of “test case”.
+
+*test script*
+:    A test script is a file that uses the framework and contains one or
+     more test bundles that will execute when the test script is run.
+
+*test suite*
+:    Test suites are a collection of test bundles, and therefore is a
+     term that refers to the entire set of test cases in a project.
 
 
 # ANATOMY OF A TEST SCRIPT
@@ -103,17 +133,61 @@ should be skipped or not.
 
 ### Static Skips
 
-TODO
+Using the ’*skip*’ keyword in a define-key instance will skip the
+included test without evaluating it:
+
+~~~~~~~{.scheme}
+(define-test skip "Basic integer addition works"
+  (pass-if-= (+ 1 2) 3)))
+~~~~~~~
+
+Similarly, entire bundles can be skipped. Included tests are never
+visited and produce no output at all:
+
+~~~~~~~{.scheme}
+(with-test-bundle skip (math simple)
+  (plan 1)
+  (define-test "Basic integer addition works"
+    ;; This would fail, but is never reached.
+    (pass-if-= (+ 1 2) 4)))
+~~~~~~~
 
 
 ### Dynamic Skips
 
-TODO
+Test bundles can also be skipped based on the evaluation of an
+expression. This is done by using the ‘*require*’ form at the top level
+of a bundle:
 
+~~~~~~~{.scheme}
+(with-test-bundle (test tap todo)
+  (plan 1)
+  (require (eq? 'this 'fails))
+  (define-test "This test is never reached"
+    (pass-if-= 1 1)))
+~~~~~~~
+
+This can be useful in case a set of tests can only be usefully be run,
+in case the execution environment does not satisfy a giving requirement.
 
 ## Marking Tests as TODO
 
-TODO
+Marking a test case as `TODO`, means that the test is run as it would
+usually, but the outcome of the test is *expected* to be failure. This
+is useful, for instance, in case there is a corner case that is hard to
+fix properly, where you want to keep the test in case because it
+properly specifies the intended behaviour of the code, even though parts
+of it are not quite right yet.
+
+To mark an arbitrary number of tests as `TODO`, wrap the `define-test`
+instances in the `(todo ...)` form:
+
+~~~~~~~{.scheme}
+(todo
+ (define-test "Basic integer addition works"
+   ;; Yes, this fails. We know. We'll get to it.
+   (pass-if-= (+ 1 2) 4)))
+~~~~~~~
 
 
 # TEST CASE MACROS
@@ -280,7 +354,7 @@ See the “Configuration” section below for details about how to control how t
 file name of the test-script is turned into a hierarchy list.
 
 
-## Dianostics
+## Diagnostics
 
 TODO
 
