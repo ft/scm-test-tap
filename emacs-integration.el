@@ -7,7 +7,8 @@
         (put (car thing)
              'scheme-indent-function
              (cdr thing)))
-      '((with-test-bundle . 1)
+      '((for-each-test . 1)
+        (with-test-bundle . 1)
         (with-fs-test-bundle . 1)
         (with-ellipsis . 1)
         (set-record-type-printer! . 1)

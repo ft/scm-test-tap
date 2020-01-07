@@ -95,6 +95,7 @@
             define-tap-test
             with-fs-test-bundle
             with-test-bundle
+            for-each-test
             force-import
             make-labeled-values
             tap/bail-out
@@ -797,6 +798,15 @@
       ((_ module symbol0 symbol1 ...)
        #'(begin (force-import module symbol0)
                 (force-import module symbol1 ...))))))
+
+(define-syntax for-each-test
+  (syntax-rules (=>)
+    ((_ (lst => current) exp0 exp ...)
+     (let loop ((rest lst))
+       (when (not (null? rest))
+         (let ((current (car rest)))
+           exp0 exp ...)
+         (loop (cdr rest)))))))
 
 ;; --- TAP writers ---
 ;;
