@@ -116,6 +116,9 @@
 (define *test-fs-root* (getcwd))
 (define *test-fs-file* (car (command-line)))
 
+(define (set-hierarchy! h)
+  (set! *test-hierarchy* h))
+
 (define-syntax tap:option
   (lambda (x)
     (syntax-case x ()
@@ -424,7 +427,7 @@
       ((_ hierarchy code ...)
        #'(let ()
            (set! *test-case-count* 0)
-           (set! *test-hierarchy* (quote hierarchy))
+           (set-hierarchy! (quote hierarchy))
            (set! *plan* #f)
            (catch 'sts/tap/bail-out
              (lambda ()
