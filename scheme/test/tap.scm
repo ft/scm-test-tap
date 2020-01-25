@@ -1,6 +1,6 @@
 ;; TAP emiting test suite for scheme (currently GNU Guile only).
 
-;; Copyright 2012-2016 Frank Terbeck <ft@bewatermyfriend.org>
+;; Copyright 2012-2020 Frank Terbeck <ft@bewatermyfriend.org>
 ;; All rights reserved.
 ;;
 ;; Redistribution  and  use  in  source  and  binary  forms,  with  or  without
