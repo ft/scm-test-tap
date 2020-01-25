@@ -364,6 +364,17 @@ TODO
 TODO
 
 
+# DEPRECATED FEATURES
+
+* `(force-import MODULE SYMBOL ...)`
+
+Imports all listed symbols from the given module.
+
+This feature depends on Guile's `@@` operator. It does not play will with
+Guile's new declarative module semantics. The use of this operator is therefore
+deprecated and may be removed in an upcoming major release of the module.
+
+
 # EXAMPLES
 
 ## Test complex properties with generic macros
