@@ -30,12 +30,14 @@ fi
 
 printf 'Installing scheme source to site dir\n'
 (set -x
- install -m0644 scheme/test/tap.scm "$SITE_DIR";) || exit 1
+ install -m0644 scheme/test/tap.scm "$SITE_DIR";
+ install -m0644 scheme/test/tap-harness.scm "$SITE_DIR";) || exit 1
 
 if [ -e scheme/test/tap.go ]; then
     printf 'Installing scheme source to site dir\n'
     (set -x
-     install -m0644 scheme/test/tap.go "$SITE_COMPILED_DIR";) || exit 1
+     install -m0644 scheme/test/tap.go "$SITE_COMPILED_DIR";
+     install -m0644 scheme/test/tap-harness.go "$SITE_COMPILED_DIR";) || exit 1
 fi
 
 exit 0
