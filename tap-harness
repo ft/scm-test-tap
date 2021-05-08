@@ -1,0 +1,41 @@
+#!guile -s
+-*- scheme -*-
+!#
+
+(use-modules (ice-9 getopt-long)
+             (test tap-harness))
+
+(define *name*    'tap-harness)
+(define *version* '((major . 0)
+                    (minor . 0)
+                    (patch . 1)))
+
+(define (pp-version v)
+  (string-join (map (compose number->string cdr) v) "."))
+
+(define option-spec
+  '((debug   (single-char #\D) (value #f))
+    (help    (single-char #\h) (value #f))
+    (version (single-char #\V) (value #f))))
+
+(define opts (getopt-long (command-line) option-spec))
+
+(define (opt o)
+  (option-ref opts o #f))
+
+(when (opt 'help)
+  (newline)
+  (format #t " Usage:   tap-harness [OPTION(s)]~%~%")
+  (format #t "  --help, -h      Print this help text.~%")
+  (format #t "  --version, -V   Print version information about the program.~%")
+  (format #t "  --debug, -D     Enable debugging output in the program.~%")
+  (newline)
+  (quit 0))
+
+(when (opt 'version)
+  (format #t "~a version ~a~%" *name* (pp-version *version*))
+  (quit 0))
+
+(harness-analyse ((if (opt 'debug)
+                      pp-harness-state
+                      identity) (harness)))
