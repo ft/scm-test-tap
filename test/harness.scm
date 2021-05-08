@@ -3,6 +3,7 @@
 ;; Terms for redistribution and use can be found in LICENCE.
 
 (use-modules (ice-9 match)
+             (ice-9 regex)
              (srfi srfi-1)
              (test tap)
              (test tap-harness))
@@ -56,22 +57,22 @@
            (number . 23)
            (description . "foo bar # baz")
            (directive . #f)))
-    ("ok 23 - foo bar # baz # SKIP" .
+    ("ok 23 - foo bar # baz <HASH> SKIP" .
      (test (result . #t)
            (number . 23)
            (description . "foo bar # baz")
            (directive skip (reason . #f))))
-    ("ok 23 - foo bar # baz # SKIP   Some Reason" .
+    ("ok 23 - foo bar # baz <HASH> SKIP   Some Reason" .
      (test (result . #t)
            (number . 23)
            (description . "foo bar # baz")
            (directive skip (reason . "Some Reason"))))
-    ("not ok 23 - foo bar # baz # TODO" .
+    ("not ok 23 - foo bar # baz <HASH> TODO" .
      (test (result . #f)
            (number . 23)
            (description . "foo bar # baz")
            (directive todo (reason . #f))))
-    ("not ok 23 - foo bar # baz # TODO Some Reason" .
+    ("not ok 23 - foo bar # baz <HASH> TODO Some Reason" .
      (test (result . #f)
            (number . 23)
            (description . "foo bar # baz")
@@ -94,17 +95,17 @@
            (start . 1)
            (end . 0)
            (directive skip (reason . #f))))
-    ("1..0 # SKIP" .
+    ("1..0 <HASH> SKIP" .
      (plan (number . 0)
            (start . 1)
            (end . 0)
            (directive skip (reason . #f))))
-    ("1..0 # SKIP Some Reason!" .
+    ("1..0 <HASH> SKIP Some Reason!" .
      (plan (number . 0)
            (start . 1)
            (end . 0)
            (directive skip (reason . "Some Reason!"))))
-    ("1..0 # SKIP    Some Reason!" .
+    ("1..0 <HASH> SKIP    Some Reason!" .
      (plan (number . 0)
            (start . 1)
            (end . 0)
@@ -116,6 +117,10 @@
     ;; Unknown lines
     ("" . (unknown . ""))
     ("This is nothing TAP knows" . (unknown . "This is nothing TAP knows"))))
+
+(define (hm str)
+  (let ((m (string-match "<HASH>" str)))
+    (if m (regexp-substitute #f m 'pre "#" 'post) str)))
 
 (define processor-tests
   `((plan-exists ,(make-harness-state) ("1..23") ,harness-plan)
@@ -137,7 +142,7 @@
   (for-each
    (lambda (t)
      (define-test (format #f "TAP input parses as expected: ~s" (car t))
-       (pass-if-equal? (input->record (car t))
+       (pass-if-equal? (input->record ((compose hm car) t))
                        (cdr t))))
    input-tests)
 
