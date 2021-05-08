@@ -133,15 +133,6 @@
 (define (todo? obj)
   (directive? 'todo obj))
 
-(define (plan-skip? plan)
-  (skip? plan))
-
-(define (test-skip? test)
-  (skip? test))
-
-(define (test-todo? test)
-  (todo? test))
-
 (define (test-pass? test)
   (assq-ref test 'result))
 
@@ -210,7 +201,7 @@
     ((init) (set-fields s
                         ((harness-deterministic?) #t)
                         ((harness-plan) plan)
-                        ((harness-state) (if (plan-skip? plan)
+                        ((harness-state) (if (skip? plan)
                                              'finished
                                              'active))))
     ((active) (cond ((not (harness-deterministic? s))
@@ -236,11 +227,11 @@
                      result
                      (change-test-number result (harness-number s))))
          (kind (if (test-pass? result)
-                   (cond ((test-todo? result) 'todo-but-pass)
-                         ((test-skip? result) 'skip)
+                   (cond ((todo? result) 'todo-but-pass)
+                         ((skip? result) 'skip)
                          (else 'pass))
-                   (cond ((test-todo? result) 'todo)
-                         ((test-skip? result) 'skip-but-fail)
+                   (cond ((todo? result) 'todo)
+                         ((skip? result) 'skip-but-fail)
                          (else 'fail)))))
     (push-result s kind result)))
 
