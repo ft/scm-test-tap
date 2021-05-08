@@ -339,19 +339,17 @@
 
 (define (harness-analyse-results state)
   (let* ((results (harness-results state))
-         (get (lambda (k) (assq-ref results k))))
+         (get (lambda (k) (assq-ref results k)))
+         (pnn (lambda (k s)
+                (let ((n (length (get k))))
+                  (when (positive? n)
+                    (format #t "  • ~a of these~a~%" n s))))))
     (format #t "  • ~a of these passed.~%" (length (get 'pass)))
     (format #t "  • ~a of these failed.~%" (length (get 'fail)))
-
-    (format #t "  • ~a of these were skipped.~%" (length (get 'skip)))
-    (let ((n (length (get 'skip-but-fail))))
-      (when (positive? n)
-        (format #t "  • ~a of these are marked to SKIP but signaled failure!~%" n)))
-
-    (format #t "  • ~a of these were mared as TODO.~%" (length (get 'todo)))
-    (let ((n (length (get 'todo-but-pass))))
-      (when (positive? n)
-        (format #t "  • ~a of these are marked as TODO but signaled success!~%" n)))))
+    (pnn 'skip                " were skipped.")
+    (pnn 'skip-but-fail       " are marked to SKIP but signaled failure!")
+    (pnn 'todo                " were marked as TODO.")
+    (pnn 'todo-but-pass       " are marked as TODO but signaled success!")))
 
 (define (harness-analyse state)
   (harness-analyse-version state)
