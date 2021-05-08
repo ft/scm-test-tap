@@ -2,8 +2,17 @@
 ;; All rights reserved.
 ;; Terms for redistribution and use can be found in LICENCE.
 
-(use-modules (test tap)
+(use-modules (ice-9 match)
+             (srfi srfi-1)
+             (test tap)
              (test tap-harness))
+
+(define debug? #f)
+
+(define (d:eq? a b)
+  (when debug?
+    (format #t "# (eq? a b)~%# a: ~a~%# b: ~a~%" a b))
+  (eq? a b))
 
 (define input-tests
   '( ;; Test lines: (ok, not ok... stuff like that)
@@ -108,11 +117,40 @@
     ("" . (unknown . ""))
     ("This is nothing TAP knows" . (unknown . "This is nothing TAP knows"))))
 
+(define processor-tests
+  `((plan-exists ,(make-harness-state) ("1..23") ,harness-plan)
+    (init-state ,(make-harness-state) ()
+                ,(lambda (s) (d:eq? 'init (harness-state s))))
+    (deterministic-plan ,(make-harness-state)
+                        ("1..23")
+                        ,harness-deterministic?)
+    (bail-out-finishes ,(make-harness-state)
+                       ("Bail out!")
+                       ,(lambda (s) (eq? 'finished (harness-state s))))
+    (non-deterministic-plan-finishes ,(make-harness-state)
+                                     ("ok" "not ok" "ok" "1..3")
+                                     ,(lambda (s) (eq? 'finished (harness-state s))))))
+
 (with-test-bundle (test harness)
-  (plan (length input-tests))
+  (plan (+ (length input-tests)
+           (length processor-tests)))
   (for-each
    (lambda (t)
      (define-test (format #f "TAP input parses as expected: ~s" (car t))
        (pass-if-equal? (input->record (car t))
                        (cdr t))))
-   input-tests))
+   input-tests)
+
+  (for-each
+   (lambda (t)
+     (define-test (format #f "TAP processor step works: ~a" (car t))
+       (match (cdr t)
+         ((state (input ...) callback)
+          (pass-if-true (let ((final (fold (lambda (e s)
+                                             (harness-process s e))
+                                           state
+                                           input)))
+                          (when debug?
+                            (format #t "# ~s~%" final))
+                          (callback final)))))))
+   processor-tests))
