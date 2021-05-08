@@ -145,9 +145,15 @@
 (define (test-pass? test)
   (assq-ref test 'result))
 
+(define (make-results)
+  '((pass) (fail) (todo) (skip) (todo-but-pass) (skip-but-fail)))
+
+(define (finalise-results results)
+  (map (lambda (r) (cons (car r) (reverse (cdr r))))
+       results))
+
 (define-immutable-record-type <harness-state>
-  (make-harness-state* version state number plan deterministic?
-                       log pass fail todo-but-pass skip-but-fail)
+  (make-harness-state* version state number plan deterministic? log results)
   harness-state?
   (version          harness-version          change-harness-version)
   (state            harness-state            change-harness-state)
@@ -155,45 +161,31 @@
   (plan             harness-plan             change-harness-plan)
   (deterministic?   harness-deterministic?   change-harness-deterministic?)
   (log              harness-log              change-harness-log)
-  (pass             harness-pass             change-harness-pass)
-  (fail             harness-fail             change-harness-fail)
-  (todo-but-pass    harness-todo-but-pass    change-harness-todo-but-pass)
-  (skip-but-fail    harness-skip-but-fail    change-harness-skip-but-fail))
+  (results          harness-results          change-harness-results))
 
 (define* (make-harness-state #:key
                              (version *tap-harness-version*)
                              (state 'init) (number 1)
                              (plan #f) (deterministic? #f)
-                             (log '()) (pass '()) (fail '())
-                             (todo-but-pass '()) (skip-but-fail '()))
-  (make-harness-state* version state number
-                       plan deterministic?
-                       log pass fail todo-but-pass skip-but-fail))
+                             (log '()) (results (make-results)))
+  (make-harness-state* version state number plan deterministic? log results))
 
 (define (harness-finalise s)
   (set-fields s
               ((harness-state) 'finished)
               ((harness-number) (1- (harness-number s)))
               ((harness-log) (reverse (harness-log s)))
-              ((harness-pass) (reverse (harness-pass s)))
-              ((harness-fail) (reverse (harness-fail s)))
-              ((harness-todo-but-pass) (reverse (harness-todo-but-pass s)))
-              ((harness-skip-but-fail) (reverse (harness-skip-but-fail s)))))
+              ((harness-results) (finalise-results (harness-results s)))))
 
-(define (push change get s obj)
-  (change s (cons obj (get s))))
-
-(define (push-pass s obj)
-  (push change-harness-pass harness-pass s obj))
-
-(define (push-fail s obj)
-  (push change-harness-fail harness-fail s obj))
-
-(define (push-todo-but-pass s obj)
-  (push change-harness-todo-but-pass harness-todo-but-pass s obj))
-
-(define (push-skip-but-fail s obj)
-  (push change-harness-skip-but-fail harness-skip-but-fail s obj))
+(define (push-result state kind obj)
+  (change-harness-results
+   state
+   (let loop ((rest (harness-results state)))
+     (match (car rest)
+       ((k . v) (if (eq? k kind)
+                    (cons (cons* k obj v) (cdr rest))
+                    (cons (car rest) (loop (cdr rest)))))
+       (_ (throw 'unknown-result-kind kind))))))
 
 (define (push-harness-log s obj)
   (cons obj (harness-log s)))
@@ -240,12 +232,17 @@
           (else (cons (car rest) (loop (cdr rest)))))))
 
 (define (add-result result s)
-  (let ((result (if (with-number? result)
-                    result
-                    (change-test-number result (harness-number s)))))
-    (if (test-pass? result)
-        ((if (test-todo? result) push-todo-but-pass push-pass) s result)
-        ((if (test-skip? result) push-skip-but-fail push-fail) s result))))
+  (let* ((result (if (with-number? result)
+                     result
+                     (change-test-number result (harness-number s))))
+         (kind (if (test-pass? result)
+                   (cond ((test-todo? result) 'todo-but-pass)
+                         ((test-skip? result) 'skip)
+                         (else 'pass))
+                   (cond ((test-todo? result) 'todo)
+                         ((test-skip? result) 'skip-but-fail)
+                         (else 'fail)))))
+    (push-result s kind result)))
 
 (define (harness-number++ s)
   (change-harness-number s (1+ (harness-number s))))
@@ -306,27 +303,18 @@
         (plan (harness-plan s))
         (deterministic? (harness-deterministic? s))
         (log (harness-log s))
-        (pass (harness-pass s))
-        (fail (harness-fail s))
-        (todo-but-pass (harness-todo-but-pass s))
-        (skip-but-fail (harness-skip-but-fail s)))
+        (results (harness-results s)))
     (format #t "TAP version ~a~%" version)
     (format #t "state: ~a~%" state)
     (format #t "number: ~a~%" number)
     (format #t "plan: ~a (deterministic? ~a)~%" plan deterministic?)
-    (format #t "log:~%")           (pp log)
-    (format #t "pass:~%")          (pp pass)
-    (format #t "fail:~%")          (pp fail)
-    (format #t "todo-but-pass:~%") (pp todo-but-pass)
-    (format #t "skip-but-fail:~%") (pp skip-but-fail)
+    (format #t "log:~%")     (pp log)
+    (format #t "results:~%") (pp results)
     s))
 
 (define (number-of-tests state)
-  (apply + (map (compose length (lambda (f) (f state)))
-                (list harness-pass
-                      harness-fail
-                      harness-todo-but-pass
-                      harness-skip-but-fail))))
+  (apply + (map (compose length cdr)
+                (harness-results state))))
 
 (define (harness-analyse-version state)
   (let ((version (harness-version state)))
@@ -350,16 +338,18 @@
         (format #t "Ran ~a test~p.~%" tests-that-ran tests-that-ran))))
 
 (define (harness-analyse-results state)
-  (let ((pass (harness-pass state))
-        (fail (harness-fail state))
-        (todo-but-pass (harness-todo-but-pass state))
-        (skip-but-fail (harness-skip-but-fail state)))
-    (format #t "  • ~a of these passed.~%" (length pass))
-    (format #t "  • ~a of these failed.~%" (length fail))
-    (let ((n (length skip-but-fail)))
+  (let* ((results (harness-results state))
+         (get (lambda (k) (assq-ref results k))))
+    (format #t "  • ~a of these passed.~%" (length (get 'pass)))
+    (format #t "  • ~a of these failed.~%" (length (get 'fail)))
+
+    (format #t "  • ~a of these were skipped.~%" (length (get 'skip)))
+    (let ((n (length (get 'skip-but-fail))))
       (when (positive? n)
         (format #t "  • ~a of these are marked to SKIP but signaled failure!~%" n)))
-    (let ((n (length todo-but-pass)))
+
+    (format #t "  • ~a of these were mared as TODO.~%" (length (get 'todo)))
+    (let ((n (length (get 'todo-but-pass))))
       (when (positive? n)
         (format #t "  • ~a of these are marked as TODO but signaled success!~%" n)))))
 
