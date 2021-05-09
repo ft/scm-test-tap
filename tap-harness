@@ -16,6 +16,7 @@
 (define option-spec
   '((debug   (single-char #\D) (value #f))
     (help    (single-char #\h) (value #f))
+    (verbose (single-char #\v) (value #f))
     (version (single-char #\V) (value #f))))
 
 (define opts (getopt-long (command-line) option-spec))
@@ -29,6 +30,7 @@
   (format #t "  --help, -h      Print this help text.~%")
   (format #t "  --version, -V   Print version information about the program.~%")
   (format #t "  --debug, -D     Enable debugging output in the program.~%")
+  (format #t "  --verbose, -v   Enable verbose harness operation.~%")
   (newline)
   (quit 0))
 
@@ -36,6 +38,20 @@
   (format #t "~a version ~a~%" *name* (pp-version *version*))
   (quit 0))
 
+(define (echo s i p)
+  (display i)
+  (newline)
+  s)
+
+(define harness-callback
+  (if (opt 'verbose)
+      (make-harness-callback #:test echo
+                             #:plan echo
+                             #:diagnostic echo
+                             #:version echo
+                             #:bailout echo)
+      (make-harness-callback #:bailout echo)))
+
 (harness-analyse ((if (opt 'debug)
                       pp-harness-state
-                      identity) (harness)))
+                      identity) (harness harness-callback)))
