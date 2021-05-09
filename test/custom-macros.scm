@@ -10,9 +10,9 @@
 
 (with-test-bundle (example diagnostics custom-primitives)
   (plan 3)
-  (define-test "Costum macro pass-if-string? works"
+  (define-test "Custom macro pass-if-string? works"
     (pass-if-string? "123"))
-  (define-test "Costum macro pass-if-valid-type? likes strings"
+  (define-test "Custom macro pass-if-valid-type? likes strings"
     (pass-if-valid-type? "123"))
-  (define-test "Costum macro pass-if-valid-type? likes numbers"
+  (define-test "Custom macro pass-if-valid-type? likes numbers"
     (pass-if-valid-type? 4+2i)))
