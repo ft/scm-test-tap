@@ -54,4 +54,7 @@
 
 (harness-analyse ((if (opt 'debug)
                       pp-harness-state
-                      identity) (harness harness-callback)))
+                      identity) (harness harness-callback))
+                 #:pre-summary (lambda ()
+                                 (when (opt 'verbose)
+                                   (newline))))

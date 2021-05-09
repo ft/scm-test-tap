@@ -369,7 +369,8 @@
     (pnn 'todo                " were marked as TODO.")
     (pnn 'todo-but-pass       " are marked as TODO but signaled success!")))
 
-(define (harness-analyse state)
+(define* (harness-analyse state #:key (pre-summary (lambda () #t)))
+  (pre-summary)
   (harness-analyse-version state)
   (harness-analyse-plan state)
   (harness-analyse-results state)
