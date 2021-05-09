@@ -44,9 +44,20 @@
             harness-plan
             harness-state
             echo-input
-            render-parsed))
+            render-parsed
+            progress-plan
+            progress-test))
 
 (define *tap-harness-version* 12)
+
+(define (assq-change alist key value)
+  (let loop ((rest alist))
+    (match rest
+      (((k . v) . rest*)
+       (if (eq? k key)
+           (cons (cons key value) rest*)
+           (cons (cons k v) (loop rest*))))
+      (_ (list (cons key value))))))
 
 (define (match-string-fn obj . lst)
   (call/ec
@@ -171,10 +182,11 @@
        results))
 
 (define-immutable-record-type <harness-state>
-  (make-harness-state* version state number plan deterministic? log results)
+  (make-harness-state* version state auxiliary number plan deterministic? log results)
   harness-state?
   (version          harness-version          change-harness-version)
   (state            harness-state            change-harness-state)
+  (auxiliary        harness-auxiliary        change-harness-auxiliary)
   (number           harness-number           change-harness-number)
   (plan             harness-plan             change-harness-plan)
   (deterministic?   harness-deterministic?   change-harness-deterministic?)
@@ -183,10 +195,10 @@
 
 (define* (make-harness-state #:key
                              (version *tap-harness-version*)
-                             (state 'init) (number 1)
+                             (state 'init) (auxiliary '()) (number 1)
                              (plan #f) (deterministic? #f)
                              (log '()) (results (make-results)))
-  (make-harness-state* version state number plan deterministic? log results))
+  (make-harness-state* version state auxiliary number plan deterministic? log results))
 
 (define (harness-finalise s)
   (set-fields s
@@ -432,3 +444,34 @@
 
   (newline)
   s)
+
+(define (return)
+  (display #\return))
+
+(define (clear-previous s)
+  (let ((n (assq-ref (harness-auxiliary s) 'last-progress-length)))
+    (when n
+      (display (make-string n #\space))
+      (return))))
+
+(define (progress-string state string)
+  (display string)
+  (return)
+  (change-harness-auxiliary state (assq-change (harness-auxiliary state)
+                                               'last-progress-length
+                                               (string-length string))))
+
+(define (progress-plan s i p)
+  (clear-previous s)
+  (let* ((n (assq-ref (harness-plan s) 'number))
+         (str (if (harness-deterministic? s)
+                  (format #f "Initialising deterministic plan: ~a tests." n)
+                  (format #f "Non deterministic plan signals ~a tests." n))))
+    (progress-string s str)))
+
+(define (progress-test s i p)
+  (clear-previous s)
+  (let* ((n (assq-ref (harness-plan s) 'number))
+         (m (1- (harness-number s)))
+         (str (format #f "Running test ~a/~a" m n)))
+    (progress-string s str)))

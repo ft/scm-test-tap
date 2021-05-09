@@ -45,11 +45,11 @@
                              #:diagnostic render-parsed
                              #:version render-parsed
                              #:bailout render-parsed)
-      (make-harness-callback #:bailout render-parsed)))
+      (make-harness-callback #:plan progress-plan
+                             #:test progress-test
+                             #:bailout render-parsed)))
 
 (harness-analyse ((if (opt 'debug)
                       pp-harness-state
                       identity) (harness harness-callback))
-                 #:pre-summary (lambda ()
-                                 (when (opt 'verbose)
-                                   (newline))))
+                 #:pre-summary (lambda () (newline)))
