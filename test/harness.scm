@@ -81,9 +81,9 @@
     ("TAP version 12" . (version . 12))
     ("TAP version 13" . (version . 13))
     ;; Bail out
-    ("Bail out!" . (bail-out (reason . #f)))
-    ("Bail out! Reason here!" . (bail-out (reason . "Reason here!")))
-    ("Bail out!    Reason here!" . (bail-out (reason . "Reason here!")))
+    ("Bail out!" . (bailout (reason . #f)))
+    ("Bail out! Reason here!" . (bailout (reason . "Reason here!")))
+    ("Bail out!    Reason here!" . (bailout (reason . "Reason here!")))
     ;; The plan
     ("1..23" .
      (plan (number . 23)
@@ -129,9 +129,9 @@
     (deterministic-plan ,(make-harness-state)
                         ("1..23")
                         ,harness-deterministic?)
-    (bail-out-finishes ,(make-harness-state)
-                       ("Bail out!")
-                       ,(lambda (s) (eq? 'finished (harness-state s))))
+    (bailout-finishes ,(make-harness-state)
+                      ("Bail out!")
+                      ,(lambda (s) (eq? 'finished (harness-state s))))
     (non-deterministic-plan-finishes ,(make-harness-state)
                                      ("ok" "not ok" "ok" "1..3")
                                      ,(lambda (s) (eq? 'finished (harness-state s))))))

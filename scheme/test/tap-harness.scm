@@ -118,7 +118,7 @@
 
 (define (input->record input)
   (define (test-version m) `(version . ,(match->number m 1)))
-  (define (test-bailout m) `(bail-out (reason . ,(maybe-string m 2))))
+  (define (test-bailout m) `(bailout (reason . ,(maybe-string m 2))))
   (define (test-diagnostic m) `(diagnostic . ,(match:substring m 1)))
   (or (match-string (input m)
         (version    (test-version m))
@@ -220,7 +220,7 @@
   (case (harness-state s)
     ((finished) (push-harness-log s (cons 'bailout-although-finished bailout)))
     ((init active) (push-harness-log* (change-harness-state s 'finished)
-                                      (cons 'bail-out bailout)))))
+                                      (cons 'bailout bailout)))))
 
 (define (handle-plan s plan)
   (case (harness-state s)
@@ -294,7 +294,7 @@
          (p (lambda (k s) ((k cb) s input parsed))))
     (match parsed
       (('version    . version)    (p cb:version    (handle-version    s version)))
-      (('bail-out   . bailout)    (p cb:bailout    (handle-bailout    s bailout)))
+      (('bailout    . bailout)    (p cb:bailout    (handle-bailout    s bailout)))
       (('plan       . plan)       (p cb:plan       (handle-plan       s plan)))
       (('diagnostic . diagnostic) (p cb:diagnostic (handle-diagnostic s diagnostic)))
       (('test       . testresult) (p cb:test       (handle-testresult s testresult)))
