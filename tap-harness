@@ -40,12 +40,12 @@
 
 (define harness-callback
   (if (opt 'verbose)
-      (make-harness-callback #:test echo-input
-                             #:plan echo-input
-                             #:diagnostic echo-input
-                             #:version echo-input
-                             #:bailout echo-input)
-      (make-harness-callback #:bailout echo-input)))
+      (make-harness-callback #:test render-parsed
+                             #:plan render-parsed
+                             #:diagnostic render-parsed
+                             #:version render-parsed
+                             #:bailout render-parsed)
+      (make-harness-callback #:bailout render-parsed)))
 
 (harness-analyse ((if (opt 'debug)
                       pp-harness-state

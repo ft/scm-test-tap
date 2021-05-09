@@ -43,7 +43,8 @@
             harness-process
             harness-plan
             harness-state
-            echo-input))
+            echo-input
+            render-parsed))
 
 (define *tap-harness-version* 12)
 
@@ -379,5 +380,55 @@
 
 (define (echo-input s i p)
   (display i)
+  (newline)
+  s)
+
+(define (render-directive d)
+  (match d
+    ((kind ('reason . r))
+     (format #t "# ~a~a~a"
+             (string-upcase (symbol->string kind))
+             (if r " " "")
+             (if r r "")))))
+
+(define (render-parsed s i p)
+
+  (define (add-directive d)
+    (when d (display " ") (render-directive d)))
+
+  (define* (maybe obj #:key (prefix " "))
+    (when obj
+      (display prefix)
+      (display obj)))
+
+  (match p
+    (('test ('result . result)
+            ('number . num)
+            ('description . desc)
+            ('directive . dir))
+     (display (if result "ok" "not ok"))
+     (maybe num)
+     (maybe desc #:prefix " - ")
+     (add-directive dir))
+
+    (('plan ('number . num)
+            ('start . start)
+            ('end . end)
+            ('directive . dir))
+     (format #t "~a..~a" start end)
+     (add-directive dir))
+
+    (('diagnostic . text) (display "# ") (display text))
+
+    (('bailout ('reason . reason))
+     (display "Bail out!")
+     (maybe reason))
+
+    (('version . version)
+     (display "TAP version ")
+     (display version))
+
+    (('unknown . text) (display text)))
+
   (newline)
   s)
