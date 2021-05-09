@@ -34,6 +34,7 @@
   #:use-module (srfi srfi-9 gnu)
   #:export (input->record
             harness
+            make-harness-callback
             make-harness-state
             pp-harness-state
             harness-analyse
@@ -125,6 +126,27 @@
         (diagnostic (test-diagnostic m))
         (testline   (test-result m)))
       `(unknown . ,input)))
+
+(define-immutable-record-type <harness-callback>
+  (make-harness-callback* version bailout plan diagnostic test unknown)
+  harness-callback?
+  (version    cb:version)
+  (bailout    cb:bailout)
+  (plan       cb:plan)
+  (diagnostic cb:diagnostic)
+  (test       cb:test)
+  (unknown    cb:unknown))
+
+(define (default-callback state input parsed) state)
+
+(define* (make-harness-callback #:key
+                                (version default-callback)
+                                (bailout default-callback)
+                                (plan default-callback)
+                                (diagnostic default-callback)
+                                (test default-callback)
+                                (unknown default-callback))
+  (make-harness-callback* version bailout plan diagnostic test unknown))
 
 (define (directive? directive obj)
   (let ((value (assq-ref obj 'directive)))
@@ -266,22 +288,24 @@
   (format #t "# Please report this issue! Giving up.~%")
   (quit 1))
 
-(define (harness-process s input)
-  (match (input->record input)
-    (('version    . version)    (handle-version    s version))
-    (('bail-out   . bailout)    (handle-bailout    s bailout))
-    (('plan       . plan)       (handle-plan       s plan))
-    (('diagnostic . diagnostic) (handle-diagnostic s diagnostic))
-    (('test       . testresult) (handle-testresult s testresult))
-    (('unknown    . data)       (handle-unknown    s data))
-    (broken                     (handle-broken     s broken input))))
+(define* (harness-process s input #:optional (cb (make-harness-callback)))
+  (let* ((parsed (input->record input))
+         (p (lambda (k s) ((k cb) s input parsed))))
+    (match parsed
+      (('version    . version)    (p cb:version    (handle-version    s version)))
+      (('bail-out   . bailout)    (p cb:bailout    (handle-bailout    s bailout)))
+      (('plan       . plan)       (p cb:plan       (handle-plan       s plan)))
+      (('diagnostic . diagnostic) (p cb:diagnostic (handle-diagnostic s diagnostic)))
+      (('test       . testresult) (p cb:test       (handle-testresult s testresult)))
+      (('unknown    . data)       (p cb:unknown    (handle-unknown    s data)))
+      (broken (handle-broken s broken input)))))
 
-(define (harness)
+(define* (harness #:optional (callback (make-harness-callback)))
   (let loop ((state (make-harness-state))
              (input (read-line)))
     (if (eof-object? input)
         (harness-finalise state)
-        (loop (harness-process state input)
+        (loop (harness-process state input callback)
               (read-line)))))
 
 (define (pp obj)
