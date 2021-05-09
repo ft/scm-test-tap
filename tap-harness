@@ -38,19 +38,14 @@
   (format #t "~a version ~a~%" *name* (pp-version *version*))
   (quit 0))
 
-(define (echo s i p)
-  (display i)
-  (newline)
-  s)
-
 (define harness-callback
   (if (opt 'verbose)
-      (make-harness-callback #:test echo
-                             #:plan echo
-                             #:diagnostic echo
-                             #:version echo
-                             #:bailout echo)
-      (make-harness-callback #:bailout echo)))
+      (make-harness-callback #:test echo-input
+                             #:plan echo-input
+                             #:diagnostic echo-input
+                             #:version echo-input
+                             #:bailout echo-input)
+      (make-harness-callback #:bailout echo-input)))
 
 (harness-analyse ((if (opt 'debug)
                       pp-harness-state

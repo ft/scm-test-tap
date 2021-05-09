@@ -42,7 +42,8 @@
             harness-finalise
             harness-process
             harness-plan
-            harness-state))
+            harness-state
+            echo-input))
 
 (define *tap-harness-version* 12)
 
@@ -375,3 +376,8 @@
   (harness-analyse-plan state)
   (harness-analyse-results state)
   state)
+
+(define (echo-input s i p)
+  (display i)
+  (newline)
+  s)
