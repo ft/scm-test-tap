@@ -115,11 +115,14 @@
 (define testline   "^(ok|not ok)(| +([0-9]+))( -[ \t]+|[ \t]+|)(.*)$")
 
 (define (input->record input)
+  (define (test-version m) `(version . ,(match->number m 1)))
+  (define (test-bailout m) `(bail-out (reason . ,(maybe-string m 2))))
+  (define (test-diagnostic m) `(diagnostic . ,(match:substring m 1)))
   (or (match-string (input m)
-        (version    `(version . ,(match->number m 1)))
-        (bailout    `(bail-out (reason . ,(maybe-string m 2))))
+        (version    (test-version m))
+        (bailout    (test-bailout m))
         (testplan   (test-plan m))
-        (diagnostic `(diagnostic . ,(match:substring m 1)))
+        (diagnostic (test-diagnostic m))
         (testline   (test-result m)))
       `(unknown . ,input)))
 
