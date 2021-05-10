@@ -52,4 +52,13 @@
 (harness-analyse ((if (opt 'debug)
                       pp-harness-state
                       identity) (harness harness-callback))
-                 #:pre-summary (lambda () (newline)))
+                 #:pre-summary
+                 (if (opt 'verbose)
+                     (lambda (_) (newline))
+                     (lambda (s)
+                       (clear-previous s)
+                       (if (zero? (length (assq-ref (harness-results s)
+                                                    'fail)))
+                           (format #t "Test: ok~%")
+                           (format #t "Test: not ok~%"))
+                       (newline))))

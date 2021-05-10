@@ -43,6 +43,9 @@
             harness-process
             harness-plan
             harness-state
+            harness-results
+            return
+            clear-previous
             echo-input
             render-parsed
             progress-plan
@@ -383,8 +386,8 @@
     (pnn 'todo                " were marked as TODO.")
     (pnn 'todo-but-pass       " are marked as TODO but signaled success!")))
 
-(define* (harness-analyse state #:key (pre-summary (lambda () #t)))
-  (pre-summary)
+(define* (harness-analyse state #:key (pre-summary (lambda (s) #t)))
+  (pre-summary state)
   (harness-analyse-version state)
   (harness-analyse-plan state)
   (harness-analyse-results state)
