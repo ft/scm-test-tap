@@ -48,6 +48,7 @@
             clear-previous
             echo-input
             render-parsed
+            progress-completion
             progress-plan
             progress-test))
 
@@ -144,13 +145,15 @@
       `(unknown . ,input)))
 
 (define-immutable-record-type <harness-callback>
-  (make-harness-callback* version bailout plan diagnostic test unknown)
+  (make-harness-callback* version bailout plan diagnostic test completion
+                          unknown)
   harness-callback?
   (version    cb:version)
   (bailout    cb:bailout)
   (plan       cb:plan)
   (diagnostic cb:diagnostic)
   (test       cb:test)
+  (completion cb:completion)
   (unknown    cb:unknown))
 
 (define (default-callback state input parsed) state)
@@ -161,8 +164,10 @@
                                 (plan default-callback)
                                 (diagnostic default-callback)
                                 (test default-callback)
+                                (completion default-callback)
                                 (unknown default-callback))
-  (make-harness-callback* version bailout plan diagnostic test unknown))
+  (make-harness-callback* version bailout plan diagnostic test completion
+                          unknown))
 
 (define (directive? directive obj)
   (let ((value (assq-ref obj 'directive)))
@@ -319,11 +324,17 @@
 
 (define* (harness #:optional (callback (make-harness-callback)))
   (let loop ((state (make-harness-state))
-             (input (read-line)))
-    (if (eof-object? input)
-        (harness-finalise state)
-        (loop (harness-process state input callback)
-              (read-line)))))
+             (input (read-line))
+             (results '()))
+    (cond ((eof-object? input) (reverse (cons ((cb:completion callback)
+                                               (harness-finalise state)
+                                               input #f)
+                                              results)))
+          ((eq? (harness-state state) 'finished)
+           (loop (make-harness-state) (read-line) (cons (harness-finalise state)
+                                                        results)))
+          (else (loop (harness-process state input callback)
+                      (read-line) results)))))
 
 (define (pp obj)
   (pretty-print obj
@@ -386,12 +397,15 @@
     (pnn 'todo                " were marked as TODO.")
     (pnn 'todo-but-pass       " are marked as TODO but signaled success!")))
 
-(define* (harness-analyse state #:key (pre-summary (lambda (s) #t)))
-  (pre-summary state)
+(define (harness-analyse-state state)
   (harness-analyse-version state)
   (harness-analyse-plan state)
   (harness-analyse-results state)
   state)
+
+(define* (harness-analyse states #:key (pre-summary (lambda (s) #t)))
+  (pre-summary states)
+  (map-in-order harness-analyse-state states))
 
 (define (echo-input s i p)
   (display i)
@@ -478,3 +492,11 @@
          (m (1- (harness-number s)))
          (str (format #f "Running test ~a/~a" m n)))
     (progress-string s str)))
+
+(define (progress-completion s i p)
+  (clear-previous s)
+  (if (zero? (length (assq-ref (harness-results s)
+                               'fail)))
+      (format #t "Test result: ok~%")
+      (format #t "Test result: not ok~%"))
+  s)
