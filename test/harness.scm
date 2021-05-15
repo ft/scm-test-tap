@@ -123,18 +123,18 @@
     (if m (regexp-substitute #f m 'pre "#" 'post) str)))
 
 (define processor-tests
-  `((plan-exists ,(make-harness-state) ("1..23") ,harness-plan)
-    (init-state ,(make-harness-state) ()
-                ,(lambda (s) (d:eq? 'init (harness-state s))))
-    (deterministic-plan ,(make-harness-state)
+  `((plan-exists ,(make-bundle-state) ("1..23") ,bundle-plan)
+    (init-state ,(make-bundle-state) ()
+                ,(lambda (s) (d:eq? 'init (bundle-state s))))
+    (deterministic-plan ,(make-bundle-state)
                         ("1..23")
-                        ,harness-deterministic?)
-    (bailout-finishes ,(make-harness-state)
+                        ,bundle-deterministic?)
+    (bailout-finishes ,(make-bundle-state)
                       ("Bail out!")
-                      ,(lambda (s) (eq? 'finished (harness-state s))))
-    (non-deterministic-plan-finishes ,(make-harness-state)
+                      ,(lambda (s) (eq? 'finished (bundle-state s))))
+    (non-deterministic-plan-finishes ,(make-bundle-state)
                                      ("ok" "not ok" "ok" "1..3")
-                                     ,(lambda (s) (eq? 'finished (harness-state s))))))
+                                     ,(lambda (s) (eq? 'finished (bundle-state s))))))
 
 (with-test-bundle (test harness)
   (plan (+ (length input-tests)
@@ -152,7 +152,7 @@
        (match (cdr t)
          ((state (input ...) callback)
           (pass-if-true (let ((final (fold (lambda (e s)
-                                             (harness-process s e))
+                                             (tap-process s e))
                                            state
                                            input)))
                           (when debug?
