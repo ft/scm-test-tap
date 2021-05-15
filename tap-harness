@@ -66,14 +66,15 @@
                              #:bailout render-parsed
                              #:completion progress-completion)))
 
-(if (with-arguments?)
-    (harness-analyse ((if (opt 'debug)
-                          pp-harness-state
-                          identity) (harness-run #:run-programs (arguments)
-                                                 #:runner (opt 'exec)
-                                                 #:callback harness-callback))
-                     #:pre-summary (lambda (_) (newline)))
-    (harness-analyse ((if (opt 'debug)
-                          pp-harness-state
-                          identity) (harness-stdin harness-callback))
-                     #:pre-summary (lambda (_) (newline))))
+(harness-combined-result
+ (if (with-arguments?)
+     (harness-analyse ((if (opt 'debug)
+                           pp-harness-state
+                           identity) (harness-run #:run-programs (arguments)
+                           #:runner (opt 'exec)
+                           #:callback harness-callback))
+                      #:pre-summary (lambda (_) (newline)))
+     (harness-analyse ((if (opt 'debug)
+                           pp-harness-state
+                           identity) (harness-stdin harness-callback))
+                      #:pre-summary (lambda (_) (newline)))))
