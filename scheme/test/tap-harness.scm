@@ -56,6 +56,7 @@
             progress-test))
 
 (define *tap-harness-version* 12)
+(define *progress-column* 50)
 
 (define (assq-change alist key value)
   (let loop ((rest alist))
@@ -193,9 +194,13 @@
        results))
 
 (define-immutable-record-type <bundle-state>
-  (make-bundle-state* version state auxiliary number plan deterministic?
-                       log results outcome)
+  (make-bundle-state* name title version
+                      state auxiliary
+                      number plan deterministic?
+                      log results outcome)
   bundle-state?
+  (name             bundle-name             change-bundle-name)
+  (title            bundle-title            change-bundle-title)
   (version          bundle-version          change-bundle-version)
   (state            bundle-state            change-bundle-state)
   (auxiliary        bundle-auxiliary        change-bundle-auxiliary)
@@ -207,13 +212,16 @@
   (outcome          bundle-outcome          change-bundle-outcome))
 
 (define* (make-bundle-state #:key
-                             (version *tap-harness-version*)
-                             (state 'init) (auxiliary '()) (number 1)
-                             (plan #f) (deterministic? #f)
-                             (log '()) (results (make-results))
-                             (outcome '(pass)))
-  (make-bundle-state* version state auxiliary number plan deterministic? log
-                       results outcome))
+                            (name 'test) (title #f)
+                            (version *tap-harness-version*)
+                            (state 'init) (auxiliary '()) (number 1)
+                            (plan #f) (deterministic? #f)
+                            (log '()) (results (make-results))
+                            (outcome '(pass)))
+  (make-bundle-state* name title version
+                      state auxiliary
+                      number plan deterministic?
+                      log results outcome))
 
 (define (make-bundle-outcome s)
   (define (count k) (length (assq-ref (bundle-results s) k)))
@@ -362,7 +370,7 @@
 
 (define (program->state p r callback)
   (let ((port (run-test p r)))
-    (let loop ((state (make-bundle-state)) (input (read-line port)))
+    (let loop ((state (make-bundle-state #:name p)) (input (read-line port)))
       (if (eof-object? input)
           ((cb:completion callback) (bundle-finalise state) input #f)
           (loop (tap-process state input callback) (read-line port))))))
@@ -584,14 +592,17 @@
   (clear-previous s)
   (let* ((n (assq-ref (bundle-plan s) 'number))
          (m (1- (bundle-number s)))
-         (str (format #f "Running test ~a/~a" m n)))
+         (str (format #f "~a ~v,,'.t ~a/~a"
+                      (bundle-name s) *progress-column* m n)))
     (progress-string s str)))
 
 (define (progress-completion s i p)
   (define (is-pass?) (bundle:pass? (bundle-outcome s)))
   (define (is-skip?) (skip? (bundle-plan s)))
   (clear-previous s)
-  (format #t "Test result: ~a~%"
+  (format #t "~a ~v,,'.t ~a~%"
+          (bundle-name s)
+          *progress-column*
           (cond ((is-pass?) 'ok)
                 ((is-skip?) 'skip)
                 (else 'fail)))
