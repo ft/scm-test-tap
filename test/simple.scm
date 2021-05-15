@@ -5,7 +5,7 @@
 (use-modules (test tap))
 
 (with-test-bundle (test tap simple)
-  (no-plan)
+  (plan 16)
 
   (define-test "test: ="
     (pass-if-= (+ 1 2) 3))
