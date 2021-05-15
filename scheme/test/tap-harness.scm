@@ -27,13 +27,15 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (ice-9 optargs)
+  #:use-module (ice-9 popen)
   #:use-module (ice-9 pretty-print)
   #:use-module (ice-9 rdelim)
   #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9 gnu)
   #:export (input->record
-            harness
+            harness-run
+            harness-stdin
             make-harness-callback
             make-harness-state
             pp-harness-state
@@ -190,7 +192,8 @@
        results))
 
 (define-immutable-record-type <harness-state>
-  (make-harness-state* version state auxiliary number plan deterministic? log results)
+  (make-harness-state* version state auxiliary number plan deterministic?
+                       log results outcome)
   harness-state?
   (version          harness-version          change-harness-version)
   (state            harness-state            change-harness-state)
@@ -199,21 +202,50 @@
   (plan             harness-plan             change-harness-plan)
   (deterministic?   harness-deterministic?   change-harness-deterministic?)
   (log              harness-log              change-harness-log)
-  (results          harness-results          change-harness-results))
+  (results          harness-results          change-harness-results)
+  (outcome          harness-outcome          change-harness-outcome))
 
 (define* (make-harness-state #:key
                              (version *tap-harness-version*)
                              (state 'init) (auxiliary '()) (number 1)
                              (plan #f) (deterministic? #f)
-                             (log '()) (results (make-results)))
-  (make-harness-state* version state auxiliary number plan deterministic? log results))
+                             (log '()) (results (make-results))
+                             (outcome '(pass)))
+  (make-harness-state* version state auxiliary number plan deterministic? log
+                       results outcome))
+
+(define (make-harness-outcome s)
+  (define (count k) (length (assq-ref (harness-results s) k)))
+  (let ((number-of-tests (if (harness-deterministic? s)
+                             (assq-ref (harness-plan s) 'number)
+                             (harness-number s)))
+        (n-pass (count 'pass))
+        (n-fail (count 'fail))
+        (n-skip (count 'skip))
+        (n-todo (count 'todo))
+        (n-skip-but-fail (count 'skip-but-fail))
+        (n-todo-but-pass (count 'todo-but-pass)))
+    (let ((n-combined (+ n-pass n-fail n-skip n-todo
+                         n-skip-but-fail n-todo-but-pass)))
+      (apply append (list (cond ((skip? (harness-plan s)) '(skip))
+                                ((not (= number-of-tests n-combined)) '(fail))
+                                ((zero? n-fail) '(pass))
+                                (else '(fail)))
+                          (if (zero? n-todo-but-pass)
+                              '()
+                              '(todo-but-pass))
+                          (if (zero? n-skip-but-fail)
+                              '()
+                              '(skip-but-fail)))))))
 
 (define (harness-finalise s)
-  (set-fields s
-              ((harness-state) 'finished)
-              ((harness-number) (1- (harness-number s)))
-              ((harness-log) (reverse (harness-log s)))
-              ((harness-results) (finalise-results (harness-results s)))))
+  (let ((next (set-fields
+               s
+               ((harness-state) 'finished)
+               ((harness-number) (1- (harness-number s)))
+               ((harness-log) (reverse (harness-log s)))
+               ((harness-results) (finalise-results (harness-results s))))))
+    (set-field next (harness-outcome) (make-harness-outcome next))))
 
 (define (push-result state kind obj)
   (change-harness-results
@@ -322,7 +354,26 @@
       (('unknown    . data)       (p cb:unknown    (handle-unknown    s data)))
       (broken (handle-broken s broken input)))))
 
-(define* (harness #:optional (callback (make-harness-callback)))
+(define (run-test p r)
+  (if r
+      (open-pipe* OPEN_READ r p)
+      (open-pipe p OPEN_READ)))
+
+(define (program->state p r callback)
+  (let ((port (run-test p r)))
+    (let loop ((state (make-harness-state)) (input (read-line port)))
+      (if (eof-object? input)
+          ((cb:completion callback) (harness-finalise state) input #f)
+          (loop (harness-process state input callback) (read-line port))))))
+
+(define* (harness-run #:key
+                      (run-programs '())
+                      (runner #f)
+                      (callback (make-harness-callback)))
+  (map-in-order (lambda (p) (program->state p runner callback))
+                run-programs))
+
+(define* (harness-stdin #:optional (callback (make-harness-callback)))
   (let loop ((state (make-harness-state))
              (input (read-line))
              (results '()))
@@ -349,13 +400,15 @@
         (plan (harness-plan s))
         (deterministic? (harness-deterministic? s))
         (log (harness-log s))
-        (results (harness-results s)))
+        (results (harness-results s))
+        (outcome (harness-outcome s)))
     (format #t "TAP version ~a~%" version)
     (format #t "state: ~a~%" state)
     (format #t "number: ~a~%" number)
     (format #t "plan: ~a (deterministic? ~a)~%" plan deterministic?)
     (format #t "log:~%")     (pp log)
     (format #t "results:~%") (pp results)
+    (format #t "outcome:~%") (pp outcome)
     s))
 
 (define (number-of-tests state)
@@ -403,9 +456,46 @@
   (harness-analyse-results state)
   state)
 
+(define (starts-with obj x)
+  (and (list? obj)
+       (not (null? obj))
+       (eq? (car obj) x)))
+
+(define (bundle:pass? obj) (starts-with obj 'pass))
+(define (bundle:fail? obj) (starts-with obj 'fail))
+(define (bundle:oddity? obj) (not (= 1 (length obj))))
+
 (define* (harness-analyse states #:key (pre-summary (lambda (s) #t)))
+  (define (count* slot f)
+    (fold (lambda (s cnt)
+            (if (f (slot s))
+                (1+ cnt)
+                cnt))
+          0 states))
+  (define (count f) (count* harness-outcome f))
   (pre-summary states)
-  (map-in-order harness-analyse-state states))
+  (let* ((n (length states))
+         (n-skip (count* harness-plan skip?))
+         (n-required (- n n-skip))
+         (n-pass (count bundle:pass?))
+         (n-fail (count bundle:fail?))
+         (n-oddity (count bundle:oddity?))
+         (tell (lambda (m text)
+                 (format #t "~a of ~a bundle~p ~a!~%"
+                         m n-required n-required text))))
+    (format #t "Processed ~a test bundle~p" n n)
+    (if (zero? n-skip)
+        (begin (display ".")
+               (newline))
+        (format #t "; ~a of which were skipped.~%" n-skip))
+    (if (= (+ n n-skip) n-pass)
+        (format #t "All test bundles passed!~%")
+        (tell n-pass 'passed))
+    (when (not (zero? n-fail))
+      (tell n-fail 'failed))
+    (when (not (zero? n-oddity))
+      (tell n-oddity "encountered an oddity")))
+  states)
 
 (define (echo-input s i p)
   (display i)
@@ -494,9 +584,12 @@
     (progress-string s str)))
 
 (define (progress-completion s i p)
+  (define (is-pass?) (bundle:pass? (harness-outcome s)))
+  (define (is-skip?) (skip? (harness-plan s)))
   (clear-previous s)
-  (if (zero? (length (assq-ref (harness-results s)
-                               'fail)))
-      (format #t "Test result: ok~%")
-      (format #t "Test result: not ok~%"))
+  (format #t "Test result: ~a~%"
+          (cond ((is-pass?) 'ok)
+                ((is-skip?) 'skip)
+                (else 'fail)))
+  
   s)

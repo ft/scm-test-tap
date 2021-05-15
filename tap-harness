@@ -14,29 +14,45 @@
   (string-join (map (compose number->string cdr) v) "."))
 
 (define option-spec
-  '((debug   (single-char #\D) (value #f))
-    (help    (single-char #\h) (value #f))
-    (verbose (single-char #\v) (value #f))
-    (version (single-char #\V) (value #f))))
+  '((debug   (single-char #\D))
+    (help    (single-char #\h))
+    (verbose (single-char #\v))
+    (version (single-char #\V))
+    (exec    (single-char #\e) (value #t))))
 
-(define opts (getopt-long (command-line) option-spec))
+(define opts (getopt-long (command-line) option-spec
+                          #:stop-at-first-non-option #t))
 
 (define (opt o)
   (option-ref opts o #f))
 
+(define (arguments)
+  (opt '()))
+
+(define (with-arguments?)
+  ((compose not zero? length) (arguments)))
+
 (when (opt 'help)
   (newline)
-  (format #t " Usage:   tap-harness [OPTION(s)]~%~%")
-  (format #t "  --help, -h      Print this help text.~%")
-  (format #t "  --version, -V   Print version information about the program.~%")
-  (format #t "  --debug, -D     Enable debugging output in the program.~%")
-  (format #t "  --verbose, -v   Enable verbose harness operation.~%")
+  (format #t " Usage:   tap-harness [OPTION(s)...] [PROGRAM(s)...]~%")
+  (newline)
+  (format #t "  --help, -h             Print this help text.~%")
+  (format #t "  --version, -V          Print version information about the program.~%")
+  (format #t "  --debug, -D            Enable debugging output in the program.~%")
+  (format #t "  --verbose, -v          Enable verbose harness operation.~%")
+  (newline)
+  (format #t "  --exec EXEC, -e EXEC   Run PROGRAM(s) via EXEC.~%")
   (newline)
   (quit 0))
 
 (when (opt 'version)
   (format #t "~a version ~a~%" *name* (pp-version *version*))
   (quit 0))
+
+(when (and (opt 'exec) (not (with-arguments?)))
+  (format #t "~a: Option --exec (-e) requires non-option arguments to run.~%"
+          *name*)
+  (quit 1))
 
 (define harness-callback
   (if (opt 'verbose)
@@ -50,7 +66,14 @@
                              #:bailout render-parsed
                              #:completion progress-completion)))
 
-(harness-analyse ((if (opt 'debug)
-                      pp-harness-state
-                      identity) (harness harness-callback))
-                 #:pre-summary (lambda (_) (newline)))
+(if (with-arguments?)
+    (harness-analyse ((if (opt 'debug)
+                          pp-harness-state
+                          identity) (harness-run #:run-programs (arguments)
+                                                 #:runner (opt 'exec)
+                                                 #:callback harness-callback))
+                     #:pre-summary (lambda (_) (newline)))
+    (harness-analyse ((if (opt 'debug)
+                          pp-harness-state
+                          identity) (harness-stdin harness-callback))
+                     #:pre-summary (lambda (_) (newline))))
