@@ -2,6 +2,7 @@
 
 GUILE_BINARY=${GUILE_BINARY:-guile}
 
+BIN_DIR="${PREFIX:-/usr/local}/bin"
 SITE_DIR=$("$GUILE_BINARY" -c '(format #t "~a" (%site-dir))')
 if [ x"$SITE_DIR" = x ]; then
     printf 'Failed to find site dir!\n'
@@ -39,5 +40,8 @@ if [ -e scheme/test/tap.go ]; then
      install -m0644 scheme/test/tap.go "$SITE_COMPILED_DIR";
      install -m0644 scheme/test/tap-harness.go "$SITE_COMPILED_DIR";) || exit 1
 fi
+
+(set -x
+ install -m0755 tap-harness "$BIN_DIR";) || exit 1
 
 exit 0
