@@ -627,4 +627,5 @@
       (pnn todo          "were marked as TODO")
       (pnn todo-but-pass "are marked as TODO but signaled success")
       (newline)
-      (format #t "Test Result: ~a~%" (if (zero? fail) "PASS" "FAIL")))))
+      (format #t "Test Result: ~a~%" (if (zero? fail) "PASS" "FAIL"))
+      (if (zero? fail) 0 1))))
