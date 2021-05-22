@@ -14,7 +14,7 @@ CFLAGS += -Wbad-case-datum -Wformat -L$(LOAD_PATH)
 COMPILE = $(GUILD_BINARY) compile $(CFLAGS)
 
 TESTGUILE = ./run-single-test
-PROVE = prove --merge --verbose --color -e '$(TESTGUILE)'
+PROVE = '$(TESTGUILE)' ./tap-harness --verbose -e '$(TESTGUILE)'
 
 MODULES_CORE =  $(TOPDIR)/scheme/test/tap.scm
 MODULES_CORE += $(TOPDIR)/scheme/test/tap-harness.scm
