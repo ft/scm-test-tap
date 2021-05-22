@@ -1,5 +1,4 @@
 TOPDIR = .
-SH = /bin/sh
 
 LOAD_PATH = $(TOPDIR)/scheme
 TEST_PATH = $(TOPDIR)/test
@@ -39,7 +38,7 @@ failures:
 	$(PROVE) examples/*.scm || true
 
 install:
-	@$(SH) ./install
+	./install
 
 clean:
 	find . -name "*.go" -exec rm -f '{}' +
