@@ -37,7 +37,7 @@ test:
 failures:
 	$(PROVE) examples/*.scm || true
 
-install:
+install: all
 	./install
 
 clean:

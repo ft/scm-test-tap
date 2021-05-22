@@ -10,36 +10,30 @@ if [ x"$SITE_DIR" = x ]; then
 fi
 SITE_DIR="${SITE_DIR}/test"
 
-if [ -e scheme/test/tap.go ]; then
-    SITE_COMPILED_DIR=$("$GUILE_BINARY" -c '(format #t "~a" (%site-ccache-dir))')
-    if [ x"$SITE_COMPILED_DIR" = x ]; then
-        printf 'Failed to find compiled dir!\n'
-        exit 1
-    fi
-    SITE_COMPILED_DIR="${SITE_COMPILED_DIR}/test"
+SITE_COMPILED_DIR=$("$GUILE_BINARY" -c '(format #t "~a" (%site-ccache-dir))')
+if [ x"$SITE_COMPILED_DIR" = x ]; then
+    printf 'Failed to find compiled dir!\n'
+    exit 1
 fi
+SITE_COMPILED_DIR="${SITE_COMPILED_DIR}/test"
 
 if [ ! -d "$SITE_DIR" ]; then
     printf 'Creating site dir: `%s'\''\n' "$SITE_DIR"
     install -m0755 -d "$SITE_DIR" || exit 1
 fi
 
-if [ -e scheme/test/tap.go ] && [ ! -d "$SITE_COMPILED_DIR" ]; then
-    printf 'Creating compiled site dir: `%s'\''\n' "$SITE_COMPILED_DIR"
-    install -m0755 -d "$SITE_COMPILED_DIR" || exit 1
-fi
+printf 'Creating compiled site dir: `%s'\''\n' "$SITE_COMPILED_DIR"
+install -m0755 -d "$SITE_COMPILED_DIR" || exit 1
 
 printf 'Installing scheme source to site dir\n'
 (set -x
  install -m0644 scheme/test/tap.scm "$SITE_DIR";
  install -m0644 scheme/test/tap-harness.scm "$SITE_DIR";) || exit 1
 
-if [ -e scheme/test/tap.go ]; then
-    printf 'Installing scheme source to site dir\n'
-    (set -x
-     install -m0644 scheme/test/tap.go "$SITE_COMPILED_DIR";
-     install -m0644 scheme/test/tap-harness.go "$SITE_COMPILED_DIR";) || exit 1
-fi
+printf 'Installing scheme source to site dir\n'
+(set -x
+ install -m0644 scheme/test/tap.go "$SITE_COMPILED_DIR";
+ install -m0644 scheme/test/tap-harness.go "$SITE_COMPILED_DIR";) || exit 1
 
 (set -x
  install -m0755 tap-harness "$BIN_DIR";) || exit 1
