@@ -18,6 +18,7 @@
 (define *guile-version* (make-default (effective-version)))
 (define *moduledir*     (make-default *datarootdir* "/guile/site/" *guile-version*))
 (define *objectdir*     (make-default *libdir* "/guile/" *guile-version* "/site-ccache"))
+(define dryrun? #f)
 
 (define (strip-scm scm)
   (let ((n (string-length scm))
@@ -43,8 +44,41 @@
 (define-syntax-rule (cmdline-variable str sym)
   (maybe-variable str (lambda (s) (sym s))))
 
+(define (usage)
+  (format #t "
+usage: install [OPTION(s)...] [PARAMETER(s)...]
+
+Options:
+D
+  --help, -h       Display this help text.
+  --dry-run, -d    Run, but don't modify the file system.
+
+Parameters:
+
+  DESTDIR
+  PREFIX
+  LIBDIR
+  DATAROOTDIR
+  GUILE_VERSION
+  MODULEDIR
+  OBJECTDIR
+
+")
+  (quit 0))
+
 (define cmdline-processors
-  (list (cmdline-variable "DESTDIR"       *destdir*)
+  (list (lambda (s)
+          (if (or (string= s "--help")
+                  (string= s "-h"))
+              (usage)
+              #f))
+        (lambda (s)
+          (if (or (string= s "--dry-run")
+                  (string= s "-d"))
+              (begin (set! dryrun? #t)
+                     #t)
+              #f))
+        (cmdline-variable "DESTDIR"       *destdir*)
         (cmdline-variable "PREFIX"        *prefix*)
         (cmdline-variable "LIBDIR"        *libdir*)
         (cmdline-variable "DATAROOTDIR"   *datarootdir*)
@@ -82,12 +116,14 @@
 
 (define (install-normal-file f d)
   (unless (dir? d)
-    (system! "mkdir" "-p" d)
-    (system! "chmod" "0755" d))
+    (unless dryrun?
+      (system! "mkdir" "-p" d)
+      (system! "chmod" "0755" d)))
   (let ((final (string-append d "/" (basename f))))
     (format #t "Installing: ~a~%" final)
-    (system! "cp" f final)
-    (system! "chmod" "0644" final)))
+    (unless dryrun?
+      (system! "cp" f final)
+      (system! "chmod" "0644" final))))
 
 (for-each (lambda (f) (install-normal-file f (*moduledir*))) *source-files*)
 (for-each (lambda (f) (install-normal-file f (*objectdir*))) *object-files*)
