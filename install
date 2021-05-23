@@ -88,9 +88,7 @@ Parameters:
 
 (define (cmdline-process lst)
   (for-each (lambda (str)
-              (format #t "DEBUG-0: ~a~%" str)
               (let loop ((rest cmdline-processors))
-                (format #t "DEBUG-1: ~a~%" rest)
                 (unless (null? rest)
                   (unless ((car rest) str)
                     (loop (cdr rest))))))
