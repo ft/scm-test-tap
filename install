@@ -1,41 +1,93 @@
-#!/bin/sh
+;; -*- scheme -*-
 
-GUILE_BINARY=${GUILE_BINARY:-guile}
+(define *source-files* '("scheme/test/tap.scm"
+                         "scheme/test/tap-harness.scm"))
 
-BIN_DIR="${PREFIX:-/usr/local}/bin"
-SITE_DIR=$("$GUILE_BINARY" -c '(format #t "~a" (%site-dir))')
-if [ x"$SITE_DIR" = x ]; then
-    printf 'Failed to find site dir!\n'
-    exit 1
-fi
-SITE_DIR="${SITE_DIR}/test"
+(define (make-default . lst)
+  (let ((value lst))
+    (case-lambda
+      (() (string-concatenate (map (lambda (obj)
+                                     (if (procedure? obj) (obj) obj))
+                                   value)))
+      (l (set! value l)))))
 
-SITE_COMPILED_DIR=$("$GUILE_BINARY" -c '(format #t "~a" (%site-ccache-dir))')
-if [ x"$SITE_COMPILED_DIR" = x ]; then
-    printf 'Failed to find compiled dir!\n'
-    exit 1
-fi
-SITE_COMPILED_DIR="${SITE_COMPILED_DIR}/test"
+(define *destdir*       (make-default ""))
+(define *prefix*        (make-default "/usr/local"))
+(define *libdir*        (make-default *prefix* "/lib"))
+(define *datarootdir*   (make-default *prefix* "/share"))
+(define *guile-version* (make-default (effective-version)))
+(define *moduledir*     (make-default *datarootdir* "/guile/site/" *guile-version*))
+(define *objectdir*     (make-default *libdir* "/guile/" *guile-version* "/site-ccache"))
 
-if [ ! -d "$SITE_DIR" ]; then
-    printf 'Creating site dir: `%s'\''\n' "$SITE_DIR"
-    install -m0755 -d "$SITE_DIR" || exit 1
-fi
+(define (strip-scm scm)
+  (let ((n (string-length scm))
+        (m (string-length ".scm")))
+    (if (< m n)
+        (substring scm 0 (- n m))
+        scm)))
 
-printf 'Creating compiled site dir: `%s'\''\n' "$SITE_COMPILED_DIR"
-install -m0755 -d "$SITE_COMPILED_DIR" || exit 1
+(define (add-go f)
+  (string-append f ".go"))
 
-printf 'Installing scheme source to site dir\n'
-(set -x
- install -m0644 scheme/test/tap.scm "$SITE_DIR";
- install -m0644 scheme/test/tap-harness.scm "$SITE_DIR";) || exit 1
+(define *object-files* (map (compose add-go strip-scm) *source-files*))
 
-printf 'Installing scheme source to site dir\n'
-(set -x
- install -m0644 scheme/test/tap.go "$SITE_COMPILED_DIR";
- install -m0644 scheme/test/tap-harness.go "$SITE_COMPILED_DIR";) || exit 1
+(define (maybe-variable str modify!)
+  (lambda (s)
+    (let* ((pf (string-append str "="))
+           (n (string-length pf)))
+      (if (string-prefix? pf s)
+          (begin (modify! (substring s n))
+                 #t)
+          #f))))
 
-(set -x
- install -m0755 tap-harness "$BIN_DIR";) || exit 1
+(define-syntax-rule (cmdline-variable str sym)
+  (maybe-variable str (lambda (s) (sym s))))
 
-exit 0
+(define cmdline-processors
+  (list (cmdline-variable "DESTDIR"       *destdir*)
+        (cmdline-variable "PREFIX"        *prefix*)
+        (cmdline-variable "LIBDIR"        *libdir*)
+        (cmdline-variable "DATAROOTDIR"   *datarootdir*)
+        (cmdline-variable "GUILE_VERSION" *guile-version*)
+        (cmdline-variable "MODULEDIR"     *moduledir*)
+        (cmdline-variable "OBJECTDIR"     *objectdir*)))
+
+(define (cmdline-process lst)
+  (for-each (lambda (str)
+              (format #t "DEBUG-0: ~a~%" str)
+              (let loop ((rest cmdline-processors))
+                (format #t "DEBUG-1: ~a~%" rest)
+                (unless (null? rest)
+                  (unless ((car rest) str)
+                    (loop (cdr rest))))))
+            lst))
+
+(cmdline-process (cdr (command-line)))
+(*moduledir* *destdir* (*moduledir*) "/test")
+(*objectdir* *destdir* (*objectdir*) "/test")
+
+(format #t "moduledir: ~a~%" (*moduledir*))
+(format #t "objectdir: ~a~%" (*objectdir*))
+
+(define (dir? d)
+  (and (file-exists? d)
+       (file-is-directory? d)))
+
+(define (system! . cmd)
+  (let ((rc (apply system* cmd)))
+    (unless (zero? rc)
+      (format #t "System command failed. ~a~%" cmd)
+      (format #t "Giving up!~%")
+      (quit 1))))
+
+(define (install-normal-file f d)
+  (unless (dir? d)
+    (system! "mkdir" "-p" d)
+    (system! "chmod" "0755" d))
+  (let ((final (string-append d "/" (basename f))))
+    (format #t "Installing: ~a~%" final)
+    (system! "cp" f final)
+    (system! "chmod" "0644" final)))
+
+(for-each (lambda (f) (install-normal-file f (*moduledir*))) *source-files*)
+(for-each (lambda (f) (install-normal-file f (*objectdir*))) *object-files*)
