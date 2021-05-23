@@ -15,7 +15,10 @@ COMPILE = $(GUILD_BINARY) compile $(CFLAGS)
 
 TESTGUILE = ./run-single-test
 PROVE = '$(TESTGUILE)' ./tap-harness --verbose -e '$(TESTGUILE)'
+
 INSTALL = $(GUILE_BINARY) --no-auto-compile ./install
+DESTDIR =
+PREFIX = /usr/local
 
 MODULES_CORE =  $(TOPDIR)/scheme/test/tap.scm
 MODULES_CORE += $(TOPDIR)/scheme/test/tap-harness.scm
@@ -39,7 +42,7 @@ failures:
 	$(PROVE) examples/*.scm || true
 
 install: all
-	$(INSTALL)
+	$(INSTALL) DESTDIR="$(DESTDIR)" PREFIX="$(PREFIX)"
 
 clean:
 	find . -name "*.go" -exec rm -f '{}' +
